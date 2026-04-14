@@ -1,0 +1,60 @@
+@page
+@model TMS.Pages.Projects.IndexModel
+@{
+    ViewData["Title"] = "Projects";
+}
+
+<h1>Projects</h1>
+
+<p>
+    <a asp-page="Create" class="btn btn-primary">Create New Project</a>
+</p>
+
+@if (!Model.Projects.Any())
+{
+    <div class="alert alert-info">No projects found. Create your first project!</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Start Date</th>
+                <th>End Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var project in Model.Projects)
+            {
+                <tr>
+                    <td>@project.Name</td>
+                    <td>
+                        <span class="badge @GetStatusBadgeClass(project.Status)">
+                            @project.Status
+                        </span>
+                    </td>
+                    <td>@project.StartDate.ToString("yyyy-MM-dd")</td>
+                    <td>@project.EndDate?.ToString("yyyy-MM-dd")</td>
+                    <td>
+                        <a asp-page="Details" asp-route-id="@project.Id" class="btn btn-sm btn-info">Details</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@functions {
+    string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "bg-secondary",
+        TMS.Models.ProjectStatus.InProgress => "bg-primary",
+        TMS.Models.ProjectStatus.Completed => "bg-success",
+        TMS.Models.ProjectStatus.OnHold => "bg-warning text-dark",
+        TMS.Models.ProjectStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+}

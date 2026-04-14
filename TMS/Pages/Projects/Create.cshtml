@@ -1,0 +1,57 @@
+@page
+@model TMS.Pages.Projects.CreateModel
+@{
+    ViewData["Title"] = "Create Project";
+}
+
+<h1>Create Project</h1>
+
+<hr />
+<div class="row">
+    <div class="col-md-6">
+        <form method="post">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="Project.Name" class="form-label"></label>
+                <input asp-for="Project.Name" class="form-control" />
+                <span asp-validation-for="Project.Name" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Project.Description" class="form-label"></label>
+                <textarea asp-for="Project.Description" class="form-control" rows="3"></textarea>
+                <span asp-validation-for="Project.Description" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Project.StartDate" class="form-label"></label>
+                <input asp-for="Project.StartDate" class="form-control" type="date" />
+                <span asp-validation-for="Project.StartDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Project.EndDate" class="form-label"></label>
+                <input asp-for="Project.EndDate" class="form-control" type="date" />
+                <span asp-validation-for="Project.EndDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Project.Status" class="form-label"></label>
+                <select asp-for="Project.Status" class="form-select"
+                        asp-items="Html.GetEnumSelectList<TMS.Models.ProjectStatus>()">
+                </select>
+                <span asp-validation-for="Project.Status" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary">Create</button>
+                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

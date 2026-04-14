@@ -1,0 +1,110 @@
+@page "{id:int}"
+@model TMS.Pages.Projects.DetailsModel
+@{
+    ViewData["Title"] = "Project Details";
+}
+
+<h1>@Model.Project.Name</h1>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Project Information</h5>
+                <dl class="row">
+                    <dt class="col-sm-3">Description</dt>
+                    <dd class="col-sm-9">@(Model.Project.Description ?? "N/A")</dd>
+
+                    <dt class="col-sm-3">Status</dt>
+                    <dd class="col-sm-9">
+                        <span class="badge @GetStatusBadgeClass(Model.Project.Status)">
+                            @Model.Project.Status
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-3">Start Date</dt>
+                    <dd class="col-sm-9">@Model.Project.StartDate.ToString("yyyy-MM-dd")</dd>
+
+                    <dt class="col-sm-3">End Date</dt>
+                    <dd class="col-sm-9">@(Model.Project.EndDate?.ToString("yyyy-MM-dd") ?? "N/A")</dd>
+
+                    <dt class="col-sm-3">Total Tasks</dt>
+                    <dd class="col-sm-9">@Model.Project.Tasks.Count</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3>Tasks</h3>
+
+<form method="post" class="row g-3 mb-3">
+    <div class="col-auto">
+        <input asp-for="NewTask.Title" class="form-control" placeholder="Task title" />
+    </div>
+    <div class="col-auto">
+        <input asp-for="NewTask.DueDate" class="form-control" type="date" />
+    </div>
+    <input type="hidden" asp-for="NewTask.ProjectId" value="@Model.Project.Id" />
+    <div class="col-auto">
+        <button type="submit" class="btn btn-success">Add Task</button>
+    </div>
+</form>
+
+@if (!Model.Project.Tasks.Any())
+{
+    <div class="alert alert-info">No tasks yet. Add your first task above!</div>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Due Date</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in Model.Project.Tasks)
+            {
+                <tr>
+                    <td>@task.Title</td>
+                    <td>
+                        <span class="badge @GetTaskBadgeClass(task.Status)">
+                            @task.Status
+                        </span>
+                    </td>
+                    <td>@task.CreatedDate.ToString("yyyy-MM-dd")</td>
+                    <td>@task.DueDate?.ToString("yyyy-MM-dd")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div class="mt-3">
+    <a asp-page="Index" class="btn btn-secondary">Back to Projects</a>
+</div>
+
+@functions {
+    string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "bg-secondary",
+        TMS.Models.ProjectStatus.InProgress => "bg-primary",
+        TMS.Models.ProjectStatus.Completed => "bg-success",
+        TMS.Models.ProjectStatus.OnHold => "bg-warning text-dark",
+        TMS.Models.ProjectStatus.Cancelled => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    string GetTaskBadgeClass(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "bg-secondary",
+        TMS.Models.TaskStatus.InProgress => "bg-primary",
+        TMS.Models.TaskStatus.Done => "bg-success",
+        TMS.Models.TaskStatus.Blocked => "bg-danger",
+        _ => "bg-secondary"
+    };
+}
