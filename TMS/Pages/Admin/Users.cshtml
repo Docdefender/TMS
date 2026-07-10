@@ -1,0 +1,180 @@
+﻿@page
+@model TMS.Pages.Admin.UsersModel
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+}
+
+<h1 class="page-heading"><i class="bi bi-people mr-2"></i>Kullanıcı Yönetimi</h1>
+
+@if (TempData["Success"] is string ok)
+{
+    <div class="mb-4 alert-success"><i class="bi bi-check-circle mr-1"></i>@ok</div>
+}
+@if (TempData["Error"] is string err)
+{
+    <div class="mb-4 alert-danger"><i class="bi bi-exclamation-triangle mr-1"></i>@err</div>
+}
+
+<!-- Filter bar with create button -->
+<form method="get" class="mb-4">
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-2">
+            <button type="button" class="btn-primary whitespace-nowrap"
+                    onclick="document.getElementById('createUserModal').classList.remove('hidden')">
+                <i class="bi bi-person-plus"></i>Yeni Kullanıcı
+            </button>
+            <div class="relative flex-1 min-w-[200px]">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="text" name="Search" value="@Model.Search"
+                       placeholder="Ad veya e-posta ara..."
+                       class="w-full pl-9 pr-3 py-2" />
+            </div>
+            <button type="submit" class="btn-secondary whitespace-nowrap">
+                <i class="bi bi-search"></i>Ara
+            </button>
+            @if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <a asp-page="Users" class="btn-secondary whitespace-nowrap">
+                    <i class="bi bi-x-circle"></i>Temizle
+                </a>
+            }
+        </div>
+    </div>
+</form>
+
+@if (!Model.Users.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-people"></i>
+        <h5 class="text-xl font-semibold mb-2">Kullanıcı bulunamadı</h5>
+        <p>Arama kriterlerinizi değiştirin veya yeni kullanıcı ekleyin.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Ad Soyad</th>
+                    <th>E-posta</th>
+                    <th>Departman</th>
+                    <th>Rol</th>
+                    <th>Rol Değiştir</th>
+                    <th>İşlemler</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var user in Model.Users)
+                {
+                    <tr>
+                        <td class="font-medium">@(user.FullName ?? "-")</td>
+                        <td>@user.Email</td>
+                        <td>@(user.DepartmentName ?? "-")</td>
+                        <td>
+                            @if (user.Roles.Any())
+                            {
+                                foreach (var role in user.Roles)
+                                {
+                                    <span class="badge @(role == "Admin" ? "badge-cancelled" : role == "Manager" ? "badge-inprogress" : "badge-completed")">@role</span>
+                                }
+                            }
+                            else
+                            {
+                                <span class="badge badge-default">Rol yok</span>
+                            }
+                        </td>
+                        <td>
+                            <form method="post" asp-page-handler="ChangeRole" class="flex gap-1 items-center">
+                                <input type="hidden" name="userId" value="@user.Id" />
+                                <select name="role" class="py-1 px-2 text-sm" style="border-radius: 0.5rem; border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-primary);">
+                                    <!option value="">- Rol Seç -</!option>
+                                    @{ var currentRole = user.Roles.FirstOrDefault() ?? ""; }
+                                    <option value="Admin"   selected="@(currentRole == "Admin"   ? "selected" : null)">Admin</option>
+                                    <option value="Manager" selected="@(currentRole == "Manager" ? "selected" : null)">Manager</option>
+                                    <option value="Member"  selected="@(currentRole == "Member"  ? "selected" : null)">Member</option>
+                                </select>
+                                <button type="submit" class="btn-primary py-1 px-2">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                            </form>
+                        </td>
+                        <td>
+                            @if (user.Email != "admin@tms.com")
+                            {
+                                <form method="post" asp-page-handler="DeleteUser"
+                                      onsubmit="return confirm('@user.FullName kullanıcısını silmek istediğinize emin misiniz?')">
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <button type="submit" class="btn-danger py-1 px-2">
+                                        <i class="bi bi-trash"></i>
+                                    </form>
+                            }
+                            else
+                            {
+                                <span class="badge badge-default">Korumalı</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+    <p class="text-xs mt-2" style="color: var(--text-muted);">Toplam @Model.Users.Count kullanıcı</p>
+}
+
+<!-- Create User Modal -->
+<div id="createUserModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
+     style="background: rgba(0,0,0,0.5);">
+    <div class="card w-full max-w-md">
+        <div class="card-header flex items-center justify-between">
+            <h2 class="font-semibold text-lg flex items-center gap-2">
+                <i class="bi bi-person-plus"></i>Yeni Kullanıcı Oluştur
+            </h2>
+            <button type="button" onclick="document.getElementById('createUserModal').classList.add('hidden')"
+                    class="p-1 rounded hover:bg-white/10" style="color: var(--text-muted);">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="CreateUser">
+                <div asp-validation-summary="ModelOnly" class="alert-danger mb-4 text-sm"></div>
+
+                <div class="mb-4">
+                    <label class="block mb-1 text-sm font-medium">Ad Soyad</label>
+                    <input name="NewUser.FullName" class="w-full" placeholder="Ad Soyad" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-1 text-sm font-medium">E-posta</label>
+                    <input name="NewUser.Email" type="email" class="w-full" placeholder="eposta@ornek.com" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-1 text-sm font-medium">Şifre</label>
+                    <input name="NewUser.Password" type="password" class="w-full" placeholder="En az 6 karakter" required />
+                </div>
+                <div class="mb-4">
+                    <label class="block mb-1 text-sm font-medium">Rol</label>
+                    <select name="NewUser.Role" class="w-full" style="border-radius: 0.5rem; border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-primary); padding: 0.5rem 0.75rem;">
+                        <option value="Member">Member</option>
+                        <option value="Manager">Manager</option>
+                        <option value="Admin">Admin</option>
+                    </select>
+                </div>
+                <div class="mb-6">
+                    <label class="block mb-1 text-sm font-medium">Departman</label>
+                    <select name="NewUser.DepartmentId" asp-items="Model.DepartmentList" class="w-full" style="border-radius: 0.5rem; border: 1px solid var(--border-input); background: var(--bg-input); color: var(--text-primary); padding: 0.5rem 0.75rem;">
+                        <option value="">- Departman Seçin -</option>
+                    </select>
+                </div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" class="btn-secondary"
+                            onclick="document.getElementById('createUserModal').classList.add('hidden')">
+                        İptal
+                    </button>
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-check-circle"></i>Oluştur
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,80 @@
+﻿@page
+@model TMS.Pages.Tasks.CreateModel
+@{
+    ViewData["Title"] = "Yeni Görev Oluştur";
+}
+
+<h1 class="text-3xl font-bold mb-6"><i class="bi bi-plus-circle mr-2"></i>Yeni Görev Oluştur</h1>
+
+<div class="max-w-3xl">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-6">
+            <form method="post">
+                <div class="mb-4">
+                    <label asp-for="TaskItem.Title" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <input asp-for="TaskItem.Title" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    <span asp-validation-for="TaskItem.Title" class="text-red-600 text-sm"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="TaskItem.Description" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <textarea asp-for="TaskItem.Description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="4"></textarea>
+                    <span asp-validation-for="TaskItem.Description" class="text-red-600 text-sm"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="TaskItem.ProjectId" class="block text-sm font-medium text-gray-700 mb-1">Proje</label>
+                    <select asp-for="TaskItem.ProjectId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" asp-items="Model.ProjectList">
+                        <option value="">— Proje Seçin —</option>
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label asp-for="TaskItem.Status" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <select asp-for="TaskItem.Status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                            <option value="ToDo">Yapılacak</option>
+                            <option value="InProgress">Devam Ediyor</option>
+                            <option value="InReview">Gözden Geçiriliyor</option>
+                            <option value="Done">Tamamlandı</option>
+                        </select>
+                        <span asp-validation-for="TaskItem.Status" class="text-red-600 text-sm"></span>
+                    </div>
+                    <div>
+                        <label asp-for="TaskItem.DueDate" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <input asp-for="TaskItem.DueDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" type="date" />
+                        <span asp-validation-for="TaskItem.DueDate" class="text-red-600 text-sm"></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label asp-for="TaskItem.CategoryId" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                        <select asp-for="TaskItem.CategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" asp-items="Model.CategoryList">
+                            <option value="">— Kategori Seçin —</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label asp-for="TaskItem.AssignedToUserId" class="block text-sm font-medium text-gray-700 mb-1">Atanan</label>
+                        <select asp-for="TaskItem.AssignedToUserId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" asp-items="Model.UserList">
+                            <option value="">— Atanmamış —</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center">
+                        <i class="bi bi-save mr-1"></i>Görevi Oluştur
+                    </button>
+                    <a asp-page="Index" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors inline-flex items-center">
+                        <i class="bi bi-x mr-1"></i>İptal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

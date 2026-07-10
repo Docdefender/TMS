@@ -1,110 +1,394 @@
-@page "{id:int}"
+﻿@page "{id:int}"
 @model TMS.Pages.Projects.DetailsModel
 @{
-    ViewData["Title"] = "Project Details";
+    ViewData["Title"] = "Proje Detayları";
 }
 
-<h1>@Model.Project.Name</h1>
+<div class="flex flex-wrap justify-between items-start gap-3 mb-6">
+    <div>
+        <p class="text-xs text-gray-500 uppercase tracking-widest mb-1"><i class="bi bi-folder2-open mr-1"></i>Proje Detayı</p>
+        <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">@Model.Project.Name</h1>
+    </div>
+    <div class="flex gap-2">
+        @if (Model.CanEdit)
+        {
+            <a asp-page="Edit" asp-route-id="@Model.Project.Id"
+               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center">
+                <i class="bi bi-pencil mr-1"></i>Düzenle
+            </a>
+        }
+        @if (Model.CanDelete)
+        {
+            <form method="post" asp-page-handler="DeleteProject" style="display:inline;">
+                <button type="submit"
+                        class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors inline-flex items-center"
+                        onclick="return confirm('Bu projeyi silmek istediğinizden emin misiniz?');">
+                    <i class="bi bi-trash mr-1"></i>Sil
+                </button>
+            </form>
+        }
+        <a asp-page="Index" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors inline-flex items-center">
+            <i class="bi bi-arrow-left mr-1"></i>Projelere Dön
+        </a>
+    </div>
+</div>
 
-<div class="row mb-4">
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">Project Information</h5>
-                <dl class="row">
-                    <dt class="col-sm-3">Description</dt>
-                    <dd class="col-sm-9">@(Model.Project.Description ?? "N/A")</dd>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
-                    <dt class="col-sm-3">Status</dt>
-                    <dd class="col-sm-9">
-                        <span class="badge @GetStatusBadgeClass(Model.Project.Status)">
-                            @Model.Project.Status
+    <!-- Sol: Proje Bilgileri (2/3) -->
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 h-full">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <i class="bi bi-info-circle mr-1"></i>Proje Bilgileri
+                </h5>
+            </div>
+            <div class="p-6">
+                <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-4">
+                    <dt class="text-sm font-medium text-gray-500">Açıklama</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.Project.Description ?? "-")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Durum</dt>
+                    <dd class="sm:col-span-2">
+                        <span class="@GetStatusBadgeClass(Model.Project.Status)">
+                            @GetProjectStatusText(Model.Project.Status)
                         </span>
                     </dd>
 
-                    <dt class="col-sm-3">Start Date</dt>
-                    <dd class="col-sm-9">@Model.Project.StartDate.ToString("yyyy-MM-dd")</dd>
+                    <dt class="text-sm font-medium text-gray-500">Başlangıç Tarihi</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@Model.Project.StartDate.ToString("dd.MM.yyyy")</dd>
 
-                    <dt class="col-sm-3">End Date</dt>
-                    <dd class="col-sm-9">@(Model.Project.EndDate?.ToString("yyyy-MM-dd") ?? "N/A")</dd>
+                    <dt class="text-sm font-medium text-gray-500">Bitiş Tarihi</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.Project.EndDate?.ToString("dd.MM.yyyy") ?? "-")</dd>
 
-                    <dt class="col-sm-3">Total Tasks</dt>
-                    <dd class="col-sm-9">@Model.Project.Tasks.Count</dd>
+                    <dt class="text-sm font-medium text-gray-500">Departman</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.Project.Department?.Name ?? "-")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Kategori</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.Project.Category?.Name ?? "-")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Toplam Görev</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@Model.Project.Tasks.Count</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Oluşturan</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.Project.CreatedByUser?.FullName ?? "-")</dd>
                 </dl>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ: Sorumlu + Ekip Üyeleri (1/3) -->
+    <div class="flex flex-col gap-4">
+
+        <!-- Proje Sorumlusu -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <i class="bi bi-person-badge mr-1"></i>Proje Sorumlusu
+                </h5>
+            </div>
+            <div class="p-4">
+                @if (Model.Project.Manager is not null)
+                {
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            @Model.Project.Manager.FullName.Substring(0, 1).ToUpper()
+                        </div>
+                        <div>
+                            <p class="text-sm font-semibold text-gray-900">@Model.Project.Manager.FullName</p>
+                            <p class="text-xs text-gray-500">@Model.Project.Manager.Email</p>
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-sm text-gray-400 italic">Sorumlu atanmamış</p>
+                }
+            </div>
+        </div>
+
+        <!-- Ekip Üyeleri -->
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200 flex-1">
+            <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <i class="bi bi-people mr-1"></i>Ekip Üyeleri
+                </h5>
+                <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">@Model.Project.Members.Count</span>
+            </div>
+            <div class="p-4">
+                @if (!Model.Project.Members.Any())
+                {
+                    <p class="text-sm text-gray-400 italic">Henüz ekip üyesi yok.</p>
+                }
+                else
+                {
+                    <ul class="space-y-3">
+                        @foreach (var member in Model.Project.Members)
+                        {
+                            <li class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-gray-500 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0">
+                                    @(member.User?.FullName?.Substring(0, 1).ToUpper() ?? "—")
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">@(member.User?.FullName ?? "-")</p>
+                                    <p class="text-xs text-gray-400">@(member.User?.Email ?? "")</p>
+                                </div>
+                            </li>
+                        }
+                    </ul>
+                }
             </div>
         </div>
     </div>
 </div>
 
-<h3>Tasks</h3>
-
-<form method="post" class="row g-3 mb-3">
-    <div class="col-auto">
-        <input asp-for="NewTask.Title" class="form-control" placeholder="Task title" />
+<!-- Dosya Ekleri -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <i class="bi bi-paperclip mr-1"></i>Ekler
+                </h5>
+            </div>
+            <div class="p-6">
+                <form method="post" asp-page-handler="UploadFile" enctype="multipart/form-data" class="mb-4">
+                    <div class="flex gap-2">
+                        <input type="file" asp-for="UploadedFile"
+                               class="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center whitespace-nowrap text-sm">
+                            <i class="bi bi-upload mr-1"></i>Yükle
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Maks dosya boyutu: 10MB</p>
+                </form>
+                @if (!Model.Attachments.Any())
+                {
+                    <p class="text-sm text-gray-400 text-center py-4">Henüz ek yok.</p>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var file in Model.Attachments)
+                        {
+                            <div class="flex justify-between items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <i class="bi bi-file-earmark text-gray-400 flex-shrink-0"></i>
+                                        <a href="@file.FilePath" target="_blank"
+                                           class="text-blue-600 hover:underline text-sm font-medium truncate">@file.FileName</a>
+                                        <span class="text-xs text-gray-400 flex-shrink-0">(@(file.FileSize / 1024)KB)</span>
+                                    </div>
+                                    <p class="text-xs text-gray-400 ml-5">
+                                        @file.UploadedByUser?.FullName · @file.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                                    </p>
+                                </div>
+                                @if (file.UploadedByUserId == Model.CurrentUserId || User.IsInRole("Admin"))
+                                {
+                                    <form method="post" asp-page-handler="DeleteFile" asp-route-attachmentId="@file.Id" style="display:inline;">
+                                        <button type="submit"
+                                                class="ml-2 px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs transition-colors"
+                                                onclick="return confirm('Bu dosyayı silmek istediğinizden emin misiniz?');">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
     </div>
-    <div class="col-auto">
-        <input asp-for="NewTask.DueDate" class="form-control" type="date" />
-    </div>
-    <input type="hidden" asp-for="NewTask.ProjectId" value="@Model.Project.Id" />
-    <div class="col-auto">
-        <button type="submit" class="btn btn-success">Add Task</button>
-    </div>
-</form>
-
-@if (!Model.Project.Tasks.Any())
-{
-    <div class="alert alert-info">No tasks yet. Add your first task above!</div>
-}
-else
-{
-    <table class="table table-striped">
-        <thead>
-            <tr>
-                <th>Title</th>
-                <th>Status</th>
-                <th>Created</th>
-                <th>Due Date</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var task in Model.Project.Tasks)
-            {
-                <tr>
-                    <td>@task.Title</td>
-                    <td>
-                        <span class="badge @GetTaskBadgeClass(task.Status)">
-                            @task.Status
-                        </span>
-                    </td>
-                    <td>@task.CreatedDate.ToString("yyyy-MM-dd")</td>
-                    <td>@task.DueDate?.ToString("yyyy-MM-dd")</td>
-                </tr>
-            }
-        </tbody>
-    </table>
-}
-
-<div class="mt-3">
-    <a asp-page="Index" class="btn btn-secondary">Back to Projects</a>
 </div>
+
+<!-- Görevler -->
+<div class="mb-8">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                <i class="bi bi-list-task mr-1"></i>Görevler
+            </h5>
+            <span class="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">@Model.Project.Tasks.Count</span>
+        </div>
+        <div class="p-6">
+            <form method="post" class="grid grid-cols-1 sm:grid-cols-2 lg:flex lg:flex-wrap gap-2 mb-4 pb-4 border-b border-gray-100">
+                <input asp-for="NewTask.Title"
+                       class="sm:col-span-2 lg:flex-1 lg:min-w-[180px] lg:max-w-xs px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                       placeholder="Görev başlığı" />
+                <select asp-for="NewTask.Status"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                    <option value="ToDo">Yapılacak</option>
+                    <option value="InProgress">Devam Ediyor</option>
+                    <option value="InReview">Gözden Geçiriliyor</option>
+                    <option value="Done">Tamamlandı</option>
+                </select>
+                <input asp-for="NewTask.DueDate" type="date"
+                       class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                <select asp-for="NewTask.AssignedToUserId"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        asp-items="Model.UserList">
+                    <option value="">— Atanmamış —</option>
+                </select>
+                <select asp-for="NewTask.CategoryId"
+                        class="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        asp-items="Model.CategoryList">
+                    <option value="">— Kategori —</option>
+                </select>
+                <input type="hidden" asp-for="NewTask.ProjectId" value="@Model.Project.Id" />
+                <button type="submit"
+                        class="sm:col-span-2 lg:col-auto px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors whitespace-nowrap">
+                    <i class="bi bi-plus-lg mr-1"></i>Görev Ekle
+                </button>
+            </form>
+
+            @if (!Model.Project.Tasks.Any())
+            {
+                <div class="text-center py-6 text-gray-400">
+                    <i class="bi bi-clipboard-plus text-3xl block mb-2 opacity-50"></i>
+                    <p class="text-sm">Henüz görev yok. Yukarıdan ekleyin.</p>
+                </div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Başlık</th>
+                            <th>Durum</th>
+                            <th>Kategori</th>
+                            <th>Atanan</th>
+                            <th>Oluşturulma</th>
+                            <th>Son Tarih</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model.Project.Tasks)
+                        {
+                            <tr>
+                                <td>
+                                    <a asp-page="/Tasks/Details" asp-route-id="@task.Id"
+                                       style="color:var(--color-primary);">@task.Title</a>
+                                </td>
+                                <td>
+                                    <span class="@GetTaskBadgeClass(task.Status)">
+                                        @GetTaskStatusText(task.Status)
+                                    </span>
+                                </td>
+                                <td>@(task.Category?.Name ?? "-")</td>
+                                <td>@(task.AssignedToUser?.FullName ?? "-")</td>
+                                <td>@task.CreatedDate.ToString("dd.MM.yyyy")</td>
+                                <td>@task.DueDate?.ToString("dd.MM.yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<!-- Yorumlar -->
+@if (Model.CanSeeComments)
+{
+    <div class="mb-8">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="px-6 py-4 border-b border-gray-100">
+                <h5 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    <i class="bi bi-chat-dots mr-1"></i>Yorumlar
+                </h5>
+            </div>
+            <div class="p-6">
+                @if (Model.CanComment)
+                {
+                    <form method="post" asp-page-handler="AddComment" class="mb-6">
+                        <textarea asp-for="NewComment" rows="3" placeholder="Yorum yazın..."
+                                  class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-2"></textarea>
+                        <button type="submit"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                            <i class="bi bi-send mr-1"></i>Yorum Gönder
+                        </button>
+                    </form>
+                }
+
+                @if (!Model.Comments.Any())
+                {
+                    <p class="text-sm text-gray-400 text-center py-4">Henüz yorum yok.</p>
+                }
+                else
+                {
+                    <div class="space-y-3">
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                                <div class="flex justify-between items-center mb-2">
+                                    <span class="text-sm font-semibold text-gray-900">
+                                        <i class="bi bi-person-circle mr-1 text-gray-400"></i>@comment.User?.FullName
+                                    </span>
+                                    <span class="text-xs text-gray-400">
+                                        @comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+                                        @if (comment.UpdatedAt.HasValue) { <span>(düzenlenmiş)</span> }
+                                    </span>
+                                </div>
+                                <p class="text-sm text-gray-700 mb-0">@comment.Content</p>
+                                @if (comment.UserId == Model.CurrentUserId)
+                                {
+                                    <form method="post" asp-page-handler="DeleteComment" asp-route-commentId="@comment.Id" class="mt-2" style="display:inline;">
+                                        <button type="submit"
+                                                class="px-2 py-1 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs transition-colors"
+                                                onclick="return confirm('Bu yorumu silmek istediğinizden emin misiniz?');">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
 
 @functions {
     string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
     {
-        TMS.Models.ProjectStatus.NotStarted => "bg-secondary",
-        TMS.Models.ProjectStatus.InProgress => "bg-primary",
-        TMS.Models.ProjectStatus.Completed => "bg-success",
-        TMS.Models.ProjectStatus.OnHold => "bg-warning text-dark",
-        TMS.Models.ProjectStatus.Cancelled => "bg-danger",
-        _ => "bg-secondary"
+        TMS.Models.ProjectStatus.NotStarted => "px-3 py-1 rounded-full bg-gray-500 text-white text-xs",
+        TMS.Models.ProjectStatus.InProgress => "px-3 py-1 rounded-full bg-blue-600 text-white text-xs",
+        TMS.Models.ProjectStatus.Completed => "px-3 py-1 rounded-full bg-green-600 text-white text-xs",
+        TMS.Models.ProjectStatus.OnHold => "px-3 py-1 rounded-full bg-yellow-500 text-gray-900 text-xs",
+        TMS.Models.ProjectStatus.Cancelled => "px-3 py-1 rounded-full bg-red-600 text-white text-xs",
+        _ => "px-3 py-1 rounded-full bg-gray-500 text-white text-xs"
+    };
+
+    string GetProjectStatusText(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "Başlamadı",
+        TMS.Models.ProjectStatus.InProgress => "Devam Ediyor",
+        TMS.Models.ProjectStatus.Completed => "Tamamlandı",
+        TMS.Models.ProjectStatus.OnHold => "Beklemede",
+        TMS.Models.ProjectStatus.Cancelled => "İptal Edildi",
+        _ => status.ToString()
     };
 
     string GetTaskBadgeClass(TMS.Models.TaskStatus status) => status switch
     {
-        TMS.Models.TaskStatus.ToDo => "bg-secondary",
-        TMS.Models.TaskStatus.InProgress => "bg-primary",
-        TMS.Models.TaskStatus.Done => "bg-success",
-        TMS.Models.TaskStatus.Blocked => "bg-danger",
-        _ => "bg-secondary"
+        TMS.Models.TaskStatus.ToDo       => "px-3 py-1 rounded-full bg-violet-500 text-white text-xs",
+        TMS.Models.TaskStatus.InProgress => "px-3 py-1 rounded-full bg-blue-600 text-white text-xs",
+        TMS.Models.TaskStatus.InReview   => "px-3 py-1 rounded-full bg-amber-500 text-white text-xs",
+        TMS.Models.TaskStatus.Done       => "px-3 py-1 rounded-full bg-green-600 text-white text-xs",
+        _ => "px-3 py-1 rounded-full bg-gray-500 text-white text-xs"
+    };
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo       => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview   => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done       => "Tamamlandı",
+        _ => status.ToString()
     };
 }

@@ -1,0 +1,53 @@
+﻿@page
+@model TMS.Pages.Admin.DepartmentsModel
+@{
+    ViewData["Title"] = "Departmanları Yönet";
+}
+
+<h1 class="page-heading"><i class="bi bi-building mr-2"></i>Departmanlar</h1>
+
+<form method="post" class="flex flex-wrap gap-3 mb-4">
+    <input asp-for="NewDepartment.Name" class="w-60" placeholder="Departman adı" aria-label="Departman adı" />
+    <input asp-for="NewDepartment.Description" class="flex-1 min-w-[250px] max-w-md" placeholder="Açıklama (opsiyonel)" aria-label="Departman açıklaması" />
+    <button type="submit" class="btn-primary whitespace-nowrap"><i class="bi bi-plus-lg" aria-hidden="true"></i>Departman Ekle</button>
+</form>
+
+@if (!Model.Departments.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-building"></i>
+        <h5 class="text-xl font-semibold mb-2">Henüz departman yok</h5>
+        <p class="mb-0">Yukarıdaki formu kullanarak ilk departmanı ekleyin.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>İsim</th>
+                <th>Açıklama</th>
+                <th>İ�Ylemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var dept in Model.Departments)
+            {
+                <tr>
+                    <td>@dept.Name</td>
+                    <td>@dept.Description</td>
+                    <td>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@dept.Id" style="display:inline;">
+                            <button type="submit" class="btn-danger"
+                                    onclick="return confirm('Bu departmanı silmek istedi�Yinizden emin misiniz?');" aria-label="Departmanı sil">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}

@@ -1,0 +1,225 @@
+﻿@page "{id:int}"
+@model TMS.Pages.Tasks.DetailsModel
+@{
+    ViewData["Title"] = "Görev Detayları";
+}
+
+<!-- Header with Edit/Delete Actions -->
+<div class="flex flex-wrap justify-between items-start gap-3 mb-6">
+    <h1 class="text-2xl sm:text-3xl font-bold"><i class="bi bi-clipboard-check mr-2"></i>@Model.TaskItem.Title</h1>
+    <div class="flex gap-2">
+        @if (Model.CanEdit)
+        {
+            <a asp-page="Edit" asp-route-id="@Model.TaskItem.Id" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center">
+                <i class="bi bi-pencil mr-1"></i>Düzenle
+            </a>
+        }
+        @if (Model.CanDelete)
+        {
+            <form method="post" asp-page-handler="DeleteTask" style="display:inline;">
+                <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors inline-flex items-center" onclick="return confirm('Bu görevi silmek istedi�Yinizden emin misiniz?');">
+                    <i class="bi bi-trash mr-1"></i>Sil
+                </button>
+            </form>
+        }
+    </div>
+</div>
+
+<!-- Task Information Card -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-6">
+                <h5 class="text-lg font-semibold mb-4"><i class="bi bi-info-circle mr-2"></i>Görev Bilgileri</h5>
+                <dl class="grid grid-cols-1 sm:grid-cols-3 gap-x-4 gap-y-3">
+                    <dt class="text-sm font-medium text-gray-500">Açıklama</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.TaskItem.Description ?? "N/A")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Durum</dt>
+                    <dd class="sm:col-span-2">
+                        <span class="@GetTaskBadge(Model.TaskItem.Status)">@GetTaskStatusText(Model.TaskItem.Status)</span>
+                    </dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Proje</dt>
+                    <dd class="sm:col-span-2">
+                        <a asp-page="/Projects/Details" asp-route-id="@Model.TaskItem.ProjectId" class="text-blue-600 hover:text-blue-800 hover:underline">
+                            @Model.TaskItem.Project?.Name
+                        </a>
+                    </dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Oluşturan</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.TaskItem.CreatedByUser?.FullName ?? "N/A")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Atanan</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.TaskItem.AssignedToUser?.FullName ?? "Atanmamış")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Kategori</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.TaskItem.Category?.Name ?? "N/A")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Oluşturulma</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@Model.TaskItem.CreatedDate.ToString("yyyy-MM-dd")</dd>
+
+                    <dt class="text-sm font-medium text-gray-500">Son Tarih</dt>
+                    <dd class="sm:col-span-2 text-sm text-gray-900">@(Model.TaskItem.DueDate?.ToString("yyyy-MM-dd") ?? "N/A")</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- File Attachments -->
+<h3 class="text-xl font-semibold mb-4 mt-8"><i class="bi bi-paperclip mr-2"></i>Ekler</h3>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+    <div class="lg:col-span-2">
+        <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+            <div class="p-6">
+                <form method="post" asp-page-handler="UploadFile" enctype="multipart/form-data" class="mb-4">
+                    <div class="flex gap-2">
+                        <input type="file" asp-for="UploadedFile" class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center whitespace-nowrap">
+                            <i class="bi bi-upload mr-1"></i>Yükle
+                        </button>
+                    </div>
+                    <p class="text-xs text-gray-500 mt-2">Maks dosya boyutu: 10MB</p>
+                </form>
+
+                @if (!Model.Attachments.Any())
+                {
+                    <p class="text-gray-500 text-center py-4">Henüz ek yok.</p>
+                }
+                else
+                {
+                    <div class="space-y-2">
+                        @foreach (var file in Model.Attachments)
+                        {
+                            <div class="flex justify-between items-start p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                                <div class="flex-1">
+                                    <div class="flex items-center mb-1">
+                                        <i class="bi bi-file-earmark mr-2 text-gray-500"></i>
+                                        <a href="@file.FilePath" target="_blank" class="text-blue-600 hover:text-blue-800 hover:underline font-medium">@file.FileName</a>
+                                        <span class="text-xs text-gray-500 ml-2">(@(file.FileSize / 1024)KB)</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500">
+                                        Yükleyen: @file.UploadedByUser?.FullName | @file.UploadedAt.ToString("yyyy-MM-dd HH:mm")
+                                    </p>
+                                </div>
+                                @if (file.UploadedByUserId == Model.CurrentUserId || User.IsInRole("Admin"))
+                                {
+                                    <form method="post" asp-page-handler="DeleteFile" asp-route-attachmentId="@file.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm transition-colors" onclick="return confirm('Bu dosyayı silmek istedi�Yinizden emin misiniz?');">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Back Button -->
+<div class="mb-6">
+    <a asp-page="/Projects/Details" asp-route-id="@Model.TaskItem.ProjectId" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors inline-flex items-center">
+        <i class="bi bi-arrow-left mr-1"></i>Projeye Dön
+    </a>
+</div>
+
+<!-- Comments Section -->
+@if (Model.CanSeeComments)
+{
+    <hr class="my-8 border-gray-200" />
+    <h3 class="text-xl font-semibold mb-4"><i class="bi bi-chat-dots mr-2"></i>Yorumlar</h3>
+
+    @if (Model.CanComment)
+    {
+        <form method="post" asp-page-handler="AddComment" class="mb-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
+                <div class="md:col-span-2">
+                    <textarea asp-for="NewComment" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="3" placeholder="Yorum yazın..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1">Yeni Görev Durumu <span class="text-red-600">*</span></label>
+                    <select asp-for="NewTaskStatus" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="">-- Durum Seçin --</option>
+                        <option value="ToDo">Yapılacak</option>
+                        <option value="InProgress">Devam Ediyor</option>
+                        <option value="InReview">Gözden Geçiriliyor</option>
+                        <option value="Done">Tamamlandı</option>
+                    </select>
+                </div>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                <i class="bi bi-send mr-1"></i>Yorum Gönder &amp; Durumu Güncelle
+            </button>
+        </form>
+    }
+
+    @if (!Model.Comments.Any())
+    {
+        <div class="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 text-gray-600">Henüz yorum yok.</div>
+    }
+    else
+    {
+        <div class="space-y-3">
+            @foreach (var comment in Model.Comments)
+            {
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <div class="px-4 py-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm font-semibold text-gray-900">
+                                <i class="bi bi-person mr-1"></i>@comment.User?.FullName
+                            </span>
+                            <span class="text-xs text-gray-500">
+                                @comment.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                                @if (comment.UpdatedAt.HasValue)
+                                {
+                                    <span class="ml-1">(düzenlenmi�Y)</span>
+                                }
+                            </span>
+                        </div>
+                        @if (comment.NewTaskStatus.HasValue)
+                        {
+                            <div class="mb-2">
+                                <span class="px-2 py-1 bg-cyan-500 text-white rounded-full text-xs inline-flex items-center">
+                                    <i class="bi bi-arrow-right-circle mr-1"></i>Durum de�Yi�Ytirildi: @GetTaskStatusText(comment.NewTaskStatus!.Value)
+                                </span>
+                            </div>
+                        }
+                        <p class="text-sm text-gray-700 mb-2">@comment.Content</p>
+                        @if (comment.UserId == Model.CurrentUserId)
+                        {
+                            <form method="post" asp-page-handler="DeleteComment" asp-route-commentId="@comment.Id" style="display:inline;">
+                                <button type="submit" class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs transition-colors" onclick="return confirm('Bu yorumu silmek istedi�Yinizden emin misiniz?');">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    }
+}
+
+@functions {
+    string GetTaskBadge(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo       => "px-3 py-1 rounded-full bg-violet-500 text-white text-xs",
+        TMS.Models.TaskStatus.InProgress => "px-3 py-1 rounded-full bg-blue-600 text-white text-xs",
+        TMS.Models.TaskStatus.InReview   => "px-3 py-1 rounded-full bg-amber-500 text-white text-xs",
+        TMS.Models.TaskStatus.Done       => "px-3 py-1 rounded-full bg-green-600 text-white text-xs",
+        _ => "px-3 py-1 rounded-full bg-gray-500 text-white text-xs"
+    };
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo       => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview   => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done       => "Tamamlandı",
+        _ => status.ToString()
+    };
+}

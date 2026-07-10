@@ -1,0 +1,255 @@
+﻿@page
+@model TMS.Pages.Admin.RecycleBinModel
+@{
+    ViewData["Title"] = "Geri Dönüşüm Kutusu";
+    var activeTab = Model.Tab ?? "projects";
+}
+
+<h1 class="page-heading"><i class="bi bi-trash mr-2"></i>Geri Dönüşüm Kutusu</h1>
+
+<!-- Tabs Navigation -->
+<div class="flex flex-wrap border-b border-gray-200 mb-6" role="tablist">
+    <a class="px-4 py-3 border-b-2 font-medium text-sm transition-colors @(activeTab == "projects" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")" 
+       asp-page="RecycleBin" asp-route-tab="projects">
+        Projeler <span class="ml-1 px-2 py-1 bg-gray-500 text-white rounded-full text-xs">@Model.DeletedProjects.Count</span>
+    </a>
+    <a class="px-4 py-3 border-b-2 font-medium text-sm transition-colors @(activeTab == "tasks" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")" 
+       asp-page="RecycleBin" asp-route-tab="tasks">
+        Görevler <span class="ml-1 px-2 py-1 bg-gray-500 text-white rounded-full text-xs">@Model.DeletedTasks.Count</span>
+    </a>
+    <a class="px-4 py-3 border-b-2 font-medium text-sm transition-colors @(activeTab == "comments" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")" 
+       asp-page="RecycleBin" asp-route-tab="comments">
+        Yorumlar <span class="ml-1 px-2 py-1 bg-gray-500 text-white rounded-full text-xs">@Model.DeletedComments.Count</span>
+    </a>
+    <a class="px-4 py-3 border-b-2 font-medium text-sm transition-colors @(activeTab == "departments" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")" 
+       asp-page="RecycleBin" asp-route-tab="departments">
+        Departmanlar <span class="ml-1 px-2 py-1 bg-gray-500 text-white rounded-full text-xs">@Model.DeletedDepartments.Count</span>
+    </a>
+    <a class="px-4 py-3 border-b-2 font-medium text-sm transition-colors @(activeTab == "categories" ? "border-blue-600 text-blue-600" : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300")" 
+       asp-page="RecycleBin" asp-route-tab="categories">
+        Kategoriler <span class="ml-1 px-2 py-1 bg-gray-500 text-white rounded-full text-xs">@Model.DeletedCategories.Count</span>
+    </a>
+</div>
+
+<!-- Tab Content -->
+<div>
+    @if (activeTab == "projects")
+    {
+        <div>
+            <h4 class="text-xl font-semibold mb-4">Silinmiş Projeler</h4>
+            @if (!Model.DeletedProjects.Any())
+            {
+                <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">Silinmiş proje yok.</div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İsim</th>
+                            <th>Silinme Tarihi</th>
+                            <th>Silen</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var project in Model.DeletedProjects)
+                        {
+                            <tr>
+                                <td>@project.Name</td>
+                                <td>@project.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@(project.DeletedByUserId ?? "-")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RestoreProject" asp-route-id="@project.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Geri Yükle
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+    else if (activeTab == "tasks")
+    {
+        <div>
+            <h4 class="text-xl font-semibold mb-4">Silinmiş Görevler</h4>
+            @if (!Model.DeletedTasks.Any())
+            {
+                <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">Silinmiş görev yok.</div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Başlık</th>
+                            <th>Proje</th>
+                            <th>Silinme Tarihi</th>
+                            <th>Silen</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var task in Model.DeletedTasks)
+                        {
+                            <tr>
+                                <td>@task.Title</td>
+                                <td>@task.Project?.Name</td>
+                                <td>@task.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@(task.DeletedByUserId ?? "-")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RestoreTask" asp-route-id="@task.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Geri Yükle
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+    else if (activeTab == "comments")
+    {
+        <div>
+            <h4 class="text-xl font-semibold mb-4">Silinmiş Yorumlar</h4>
+            @if (!Model.DeletedComments.Any())
+            {
+                <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">Silinmiş yorum yok.</div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İçerik</th>
+                            <th>Varlık</th>
+                            <th>Silinme Tarihi</th>
+                            <th>Silen</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var comment in Model.DeletedComments)
+                        {
+                            <tr>
+                                <td>@(comment.Content.Length > 50 ? comment.Content.Substring(0, 50) + "..." : comment.Content)</td>
+                                <td>
+                                    @if (comment.ProjectId.HasValue)
+                                    {
+                                        <span>Proje: @comment.Project?.Name</span>
+                                    }
+                                    else if (comment.TaskItemId.HasValue)
+                                    {
+                                        <span>Görev: @comment.TaskItem?.Title</span>
+                                    }
+                                </td>
+                                <td>@comment.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>@(comment.DeletedByUserId ?? "-")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RestoreComment" asp-route-id="@comment.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Geri Yükle
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+    else if (activeTab == "departments")
+    {
+        <div>
+            <h4 class="text-xl font-semibold mb-4">Silinmiş Departmanlar</h4>
+            @if (!Model.DeletedDepartments.Any())
+            {
+                <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">Silinmiş departman yok.</div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İsim</th>
+                            <th>Silinme Tarihi</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var dept in Model.DeletedDepartments)
+                        {
+                            <tr>
+                                <td>@dept.Name</td>
+                                <td>@dept.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RestoreDepartment" asp-route-id="@dept.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Geri Yükle
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+    else if (activeTab == "categories")
+    {
+        <div>
+            <h4 class="text-xl font-semibold mb-4">Silinmiş Kategoriler</h4>
+            @if (!Model.DeletedCategories.Any())
+            {
+                <div class="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded-lg">Silinmiş kategori yok.</div>
+            }
+            else
+            {
+                <div class="table-container">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>İsim</th>
+                            <th>Silinme Tarihi</th>
+                            <th>İşlemler</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cat in Model.DeletedCategories)
+                        {
+                            <tr>
+                                <td>@cat.Name</td>
+                                <td>@cat.DeletedAt?.ToString("yyyy-MM-dd HH:mm")</td>
+                                <td>
+                                    <form method="post" asp-page-handler="RestoreCategory" asp-route-id="@cat.Id" style="display:inline;">
+                                        <button type="submit" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm transition-colors inline-flex items-center">
+                                            <i class="bi bi-arrow-counterclockwise mr-1"></i>Geri Yükle
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+                </div>
+            }
+        </div>
+    }
+</div>

@@ -1,0 +1,127 @@
+﻿@page
+@model TMS.Pages.Account.ProfileModel
+@{
+    ViewData["Title"] = "Profilim";
+}
+
+<div class="max-w-2xl">
+    <h1 class="page-heading">
+        <i class="bi bi-person-circle mr-2"></i>Profilim
+    </h1>
+
+    @if (!string.IsNullOrEmpty(Model.StatusMessage))
+    {
+        <div class="mb-4 @(Model.StatusMessage.Contains("hata") || Model.StatusMessage.Contains("Hata") ? "alert-danger" : "alert-success")">
+            <i class="bi bi-@(Model.StatusMessage.Contains("hata") || Model.StatusMessage.Contains("Hata") ? "exclamation-circle" : "check-circle") mr-2"></i>
+            @Model.StatusMessage
+        </div>
+    }
+
+    <div class="grid grid-cols-1 gap-6">
+
+        <!-- Profil Bilgileri Kartı -->
+        <div class="card overflow-hidden">
+            <div class="card-header">
+                <h2 class="font-semibold text-lg flex items-center gap-2">
+                    <i class="bi bi-person"></i>Profil Bilgileri
+                </h2>
+            </div>
+            <div class="card-body">
+                <!-- Avatar + read-only info -->
+                <div class="flex items-start gap-6 mb-6">
+                    <div class="w-20 h-20 rounded-full text-white flex items-center justify-center text-2xl font-bold flex-shrink-0"
+                         style="background: var(--color-primary);">
+                        @(Model.CurrentUser?.FullName?.Length > 0
+                            ? Model.CurrentUser.FullName.Substring(0, Math.Min(2, Model.CurrentUser.FullName.Length)).ToUpper()
+                            : "—")
+                    </div>
+                    <div class="flex-1 grid grid-cols-1 gap-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide sm:w-28" style="color:var(--text-muted);">Ad Soyad</span>
+                            <span class="font-medium" style="color:var(--text-primary);">@(Model.CurrentUser?.FullName ?? "-")</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide sm:w-28" style="color:var(--text-muted);">E-posta</span>
+                            <span style="color:var(--text-primary);">@(Model.CurrentUser?.Email ?? "-")</span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide sm:w-28" style="color:var(--text-muted);">Rol</span>
+                            <span class="badge @(Model.UserRole == "Admin" ? "badge-cancelled" : Model.UserRole == "Manager" ? "badge-inprogress" : "badge-completed")">
+                                @Model.UserRole
+                            </span>
+                        </div>
+                        <div class="flex flex-col sm:flex-row sm:items-center gap-1">
+                            <span class="text-xs font-semibold uppercase tracking-wide sm:w-28" style="color:var(--text-muted);">Departman</span>
+                            <span style="color:var(--text-primary);">@(Model.CurrentUser?.Department?.Name ?? "-")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Edit name only -->
+                <div class="pt-6" style="border-top: 1px solid var(--border-card);">
+                    <h3 class="text-base font-semibold mb-4 flex items-center gap-2" style="color:var(--text-heading);">
+                        <i class="bi bi-pencil"></i>Adı Düzenle
+                    </h3>
+                    <form method="post" asp-page-handler="UpdateProfile">
+                        <div asp-validation-summary="ModelOnly" class="mb-4 px-4 py-3 text-sm alert-danger"></div>
+                        <div class="mb-4">
+                            <label asp-for="Input.FullName">Ad Soyad</label>
+                            <input asp-for="Input.FullName" class="w-full mt-1" />
+                            <span asp-validation-for="Input.FullName" class="text-red-600 text-xs mt-1 block"></span>
+                        </div>
+                        <button type="submit" class="btn-primary">
+                            <i class="bi bi-check-circle"></i>Güncelle
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Şifre Değiştirme Kartı -->
+        <div class="card overflow-hidden">
+            <div class="card-header" style="background: linear-gradient(135deg, #f59e0b, #b45309);">
+                <h2 class="font-semibold text-lg flex items-center gap-2 text-white">
+                    <i class="bi bi-key"></i>Şifre Değiştir
+                </h2>
+            </div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="ChangePassword">
+                    <div asp-validation-summary="ModelOnly" class="alert-danger mb-4"></div>
+
+                    <div class="mb-4">
+                        <label asp-for="PasswordInput.CurrentPassword">Mevcut Şifre</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color:var(--text-muted);"><i class="bi bi-lock"></i></span>
+                            <input asp-for="PasswordInput.CurrentPassword" type="password" class="w-full pl-10" />
+                        </div>
+                        <span asp-validation-for="PasswordInput.CurrentPassword" class="text-red-600 text-xs mt-1 block"></span>
+                    </div>
+                    <div class="mb-4">
+                        <label asp-for="PasswordInput.NewPassword">Yeni Şifre</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color:var(--text-muted);"><i class="bi bi-lock-fill"></i></span>
+                            <input asp-for="PasswordInput.NewPassword" type="password" class="w-full pl-10" />
+                        </div>
+                        <span asp-validation-for="PasswordInput.NewPassword" class="text-red-600 text-xs mt-1 block"></span>
+                    </div>
+                    <div class="mb-6">
+                        <label asp-for="PasswordInput.ConfirmPassword">Şifreyi Onayla</label>
+                        <div class="relative mt-1">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color:var(--text-muted);"><i class="bi bi-lock-fill"></i></span>
+                            <input asp-for="PasswordInput.ConfirmPassword" type="password" class="w-full pl-10" />
+                        </div>
+                        <span asp-validation-for="PasswordInput.ConfirmPassword" class="text-red-600 text-xs mt-1 block"></span>
+                    </div>
+                    <button type="submit" class="btn-primary">
+                        <i class="bi bi-key"></i>Şifreyi Değiştir
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

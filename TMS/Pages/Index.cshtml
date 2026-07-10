@@ -1,10 +1,293 @@
 ﻿@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Kontrol Paneli";
+
+    var totalProjects = Model.Dashboard.TotalProjects;
+    var totalTasks = Model.Dashboard.TotalTasks;
+    var completedProjects = Model.Dashboard.CompletedProjects;
+    var overdueProjects = Model.Dashboard.OverdueProjectsCount;
+    var overdueTasks = Model.Dashboard.OverdueTasksCount;
+
+    var projectCompletionRate = totalProjects > 0 ? (completedProjects * 100.0 / totalProjects) : 0;
+    var projectsCompleted = completedProjects;
+    var projectsTotal = totalProjects;
+
+    var projectTaskRatio = totalProjects > 0 ? (totalTasks * 1.0 / totalProjects) : 0;
+    var tasksPerProject = projectTaskRatio;
+
+    var todoTasks = Model.Dashboard.ToDoTasks;
+    var inProgressTasks = Model.Dashboard.InProgressTasks;
+    var doneTasks = Model.Dashboard.DoneTasks;
+    var inReviewTasks = Model.Dashboard.InReviewTasks;
+
+    var todoPercent = totalTasks > 0 ? (todoTasks * 100.0 / totalTasks) : 0;
+    var inProgressPercent = totalTasks > 0 ? (inProgressTasks * 100.0 / totalTasks) : 0;
+    var donePercent = totalTasks > 0 ? (doneTasks * 100.0 / totalTasks) : 0;
+    var inReviewPercent = totalTasks > 0 ? (inReviewTasks * 100.0 / totalTasks) : 0;
+
+    var overdueProjectPercent = totalProjects > 0 ? (overdueProjects * 100.0 / totalProjects) : 0;
+    var overdueTaskPercent = totalTasks > 0 ? (overdueTasks * 100.0 / totalTasks) : 0;
+    var needsAttention = overdueProjects > 0 || overdueTasks > 0;
+
+    var activeProjects = Model.Dashboard.InProgressProjects;
+    var activeTasks = Model.Dashboard.InProgressTasks;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<!-- Dashboard Header -->
+<div class="flex flex-wrap justify-between items-start gap-2 mb-6">
+    <h1 class="page-heading"><i class="bi bi-speedometer2"></i>Kontrol Paneli</h1>
+    <p class="text-sm mt-1" style="color: var(--text-muted);">Hoş geldiniz, @User.Identity?.Name</p>
 </div>
+
+<!-- KPI COUNTS Section -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+    <!-- PROJECTS -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                <i class="bi bi-folder2-open"></i>PROJELER
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-3 gap-3">
+                <a asp-page="/Projects/Index" class="kpi-card kpi-teal">
+                    <span class="kpi-number">@Model.Dashboard.TotalProjects</span>
+                    <span class="kpi-label">Toplam</span>
+                </a>
+                <a asp-page="/Projects/Index" asp-route-status="NotStarted" class="kpi-card kpi-slate">
+                    <span class="kpi-number">@Model.Dashboard.NotStartedProjects</span>
+                    <span class="kpi-label">Başlamadı</span>
+                </a>
+                <a asp-page="/Projects/Index" asp-route-status="InProgress" class="kpi-card kpi-sky">
+                    <span class="kpi-number">@Model.Dashboard.InProgressProjects</span>
+                    <span class="kpi-label">Devam Ediyor</span>
+                </a>
+                <a asp-page="/Projects/Index" asp-route-status="Completed" class="kpi-card kpi-emerald">
+                    <span class="kpi-number">@Model.Dashboard.CompletedProjects</span>
+                    <span class="kpi-label">Tamamlandı</span>
+                </a>
+                <a asp-page="/Projects/Index" asp-route-status="OnHold" class="kpi-card kpi-amber">
+                    <span class="kpi-number">@Model.Dashboard.OnHoldProjects</span>
+                    <span class="kpi-label">Beklemede</span>
+                </a>
+                <a asp-page="/Projects/Index" asp-route-status="Cancelled" class="kpi-card kpi-crimson">
+                    <span class="kpi-number">@Model.Dashboard.CancelledProjects</span>
+                    <span class="kpi-label">İptal Edildi</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TASKS -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                <i class="bi bi-list-task"></i>GÖREVLER
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="grid grid-cols-4 gap-3">
+                <a asp-page="/Tasks/Index" class="kpi-card kpi-teal col-span-2">
+                    <span class="kpi-number">@Model.Dashboard.TotalTasks</span>
+                    <span class="kpi-label">Toplam</span>
+                </a>
+                <a asp-page="/Tasks/Index" asp-route-status="ToDo" class="kpi-card kpi-purple col-span-2">
+                    <span class="kpi-number">@Model.Dashboard.ToDoTasks</span>
+                    <span class="kpi-label">Yapılacak</span>
+                </a>
+                <a asp-page="/Tasks/Index" asp-route-status="InProgress" class="kpi-card kpi-sky">
+                    <span class="kpi-number">@Model.Dashboard.InProgressTasks</span>
+                    <span class="kpi-label">Devam Ediyor</span>
+                </a>
+                <a asp-page="/Tasks/Index" asp-route-status="Done" class="kpi-card kpi-emerald">
+                    <span class="kpi-number">@Model.Dashboard.DoneTasks</span>
+                    <span class="kpi-label">Tamamlandı</span>
+                </a>
+                <a asp-page="/Tasks/Index" asp-route-status="InReview" class="kpi-card kpi-amber col-span-2">
+                    <span class="kpi-number">@Model.Dashboard.InReviewTasks</span>
+                    <span class="kpi-label">Gözden Geçiriliyor</span>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ANALYTICS & INSIGHTS Section -->
+<div class="section-heading mb-6"><i class="bi bi-graph-up mr-2"></i>ANALİZLER VE İÇGÖRÜLER</div>
+
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Project Completion Rate -->
+    <div class="card">
+        <div class="card-body">
+            <h6 class="section-heading"><i class="bi bi-check-circle mr-2"></i>Proje Tamamlanma Oranı</h6>
+            <div class="mb-4">
+                <div class="w-full rounded-full h-5 overflow-hidden" style="background: var(--border-color);">
+                    <div class="h-5 flex items-center justify-center text-xs text-white font-medium transition-all"
+                         style="width: @projectCompletionRate.ToString("F0")%; background: var(--color-primary);">
+                        @projectCompletionRate.ToString("F0")%
+                    </div>
+                </div>
+            </div>
+            <p class="text-center mb-0">
+                <span class="text-5xl font-bold" style="color: var(--color-primary);">@projectsCompleted</span>
+                <span style="color: var(--text-muted);">/@projectsTotal</span>
+                <span class="block text-xs mt-2" style="color: var(--text-muted);">proje tamamlandı</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Project Task Ratio -->
+    <div class="card">
+        <div class="card-body">
+            <h6 class="section-heading"><i class="bi bi-diagram-3 mr-2"></i>Proje Görev Oranı</h6>
+            <div class="text-center space-y-3">
+                <div class="rounded-lg p-3" style="background: var(--bg-badge);">
+                    <span class="text-5xl font-bold" style="color: var(--color-primary);">@totalProjects</span>
+                    <span class="block text-xs mt-1" style="color: var(--text-muted);">Projeler</span>
+                </div>
+                <div class="rounded-lg p-3" style="background: var(--bg-badge);">
+                    <span class="text-5xl font-bold" style="color: #0ea5e9;">@totalTasks</span>
+                    <span class="block text-xs mt-1" style="color: var(--text-muted);">Görevler</span>
+                </div>
+            </div>
+            <p class="text-center mt-4 mb-0">
+                <span class="text-xs" style="color: var(--text-muted);">Oran:</span>
+                <span class="font-bold ml-1" style="color: var(--text-primary);">1:@tasksPerProject.ToString("F1")</span>
+            </p>
+        </div>
+    </div>
+
+    <!-- Tasks per Project (Average) -->
+    <div class="card">
+        <div class="card-body flex flex-col justify-center items-center text-center">
+            <h6 class="section-heading w-full"><i class="bi bi-calculator mr-2"></i>Proje Başına Görev</h6>
+            <div class="text-6xl font-bold mb-3" style="color: var(--color-primary);">@tasksPerProject.ToString("F1")</div>
+            <span class="text-xs" style="color: var(--text-muted);">ortalama görev</span>
+        </div>
+    </div>
+
+    <!-- Task Distribution -->
+    <div class="card">
+        <div class="card-body">
+            <h6 class="section-heading"><i class="bi bi-pie-chart mr-2"></i>Görev Dağılımı</h6>
+            <div class="space-y-3">
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs" style="color: var(--text-muted);">Yapılacak:</span>
+                        <span class="text-xs font-bold" style="color: var(--text-primary);">@todoPercent.ToString("F0")%</span>
+                    </div>
+                    <div class="w-full rounded-full h-2 overflow-hidden" style="background: var(--border-color);">
+                        <div class="h-2" style="width: @todoPercent.ToString("F0")%; background: #8b5cf6;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs" style="color: var(--text-muted);">Devam Ediyor:</span>
+                        <span class="text-xs font-bold" style="color: var(--text-primary);">@inProgressPercent.ToString("F0")%</span>
+                    </div>
+                    <div class="w-full rounded-full h-2 overflow-hidden" style="background: var(--border-color);">
+                        <div class="h-2" style="width: @inProgressPercent.ToString("F0")%; background: #0ea5e9;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs" style="color: var(--text-muted);">Tamamlandı:</span>
+                        <span class="text-xs font-bold" style="color: var(--text-primary);">@donePercent.ToString("F0")%</span>
+                    </div>
+                    <div class="w-full rounded-full h-2 overflow-hidden" style="background: var(--border-color);">
+                        <div class="h-2" style="width: @donePercent.ToString("F0")%; background: #10b981;"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-xs" style="color: var(--text-muted);">Gözden Geçiriliyor:</span>
+                        <span class="text-xs font-bold" style="color: var(--text-primary);">@inReviewPercent.ToString("F0")%</span>
+                    </div>
+                    <div class="w-full rounded-full h-2 overflow-hidden" style="background: var(--border-color);">
+                        <div class="h-2" style="width: @inReviewPercent.ToString("F0")%; background: #f59e0b;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Overdue Analysis -->
+    <div class="card" style="@(needsAttention ? "border-left: 4px solid var(--color-danger);" : "")">
+        <div class="card-body">
+            <h6 class="section-heading"><i class="bi bi-exclamation-triangle mr-2"></i>Gecikme Analizi</h6>
+            <div class="space-y-3 mb-4">
+                <div class="flex justify-between items-center">
+                    <span style="color: var(--text-muted);">Projeler:</span>
+                    <span class="font-bold" style="color: @(overdueProjects > 0 ? "var(--color-danger)" : "#10b981");">
+                        @overdueProjects (@overdueProjectPercent.ToString("F0")%)
+                    </span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span style="color: var(--text-muted);">Görevler:</span>
+                    <span class="font-bold" style="color: @(overdueTasks > 0 ? "var(--color-danger)" : "#10b981");">
+                        @overdueTasks (@overdueTaskPercent.ToString("F0")%)
+                    </span>
+                </div>
+            </div>
+            @if (needsAttention)
+            {
+                <div class="alert-danger"><i class="bi bi-exclamation-circle mr-2"></i><strong>Dikkat gerektirir</strong></div>
+            }
+            else
+            {
+                <div class="alert-success"><i class="bi bi-check-circle mr-2"></i><strong>Her şey yolunda!</strong></div>
+            }
+        </div>
+    </div>
+
+    <!-- Activity Trend -->
+    <div class="card">
+        <div class="card-body">
+            <h6 class="section-heading"><i class="bi bi-activity mr-2"></i>Mevcut Aktivite</h6>
+            <div class="text-center space-y-4">
+                <div>
+                    <div class="text-5xl font-bold" style="color: #0ea5e9;">@activeProjects</div>
+                    <span class="block text-xs mt-1" style="color: var(--text-muted);">Aktif Projeler</span>
+                </div>
+                <div>
+                    <div class="text-5xl font-bold" style="color: #f59e0b;">@activeTasks</div>
+                    <span class="block text-xs mt-1" style="color: var(--text-muted);">Devam Eden Görevler</span>
+                </div>
+                <div class="rounded-lg px-3 py-2 mt-4" style="background: var(--bg-badge);">
+                    <span class="text-xs" style="color: var(--text-muted);">
+                        <i class="bi bi-arrow-repeat mr-1"></i>Aktif iş yükü
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- SYSTEM STATS Section (Admin/Manager Only) -->
+@if (User.IsInRole("Admin") || User.IsInRole("Manager"))
+{
+    <div class="section-heading mb-6"><i class="bi bi-shield-check mr-2"></i>SİSTEM İSTATİSTİKLERİ</div>
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="kpi-card kpi-emerald">
+            <i class="bi bi-people-fill text-3xl block mb-2 opacity-80"></i>
+            <span class="kpi-number">@Model.Dashboard.TotalUsers</span>
+            <span class="kpi-label">Kullanıcılar</span>
+        </div>
+        <div class="kpi-card kpi-sky">
+            <i class="bi bi-building text-3xl block mb-2 opacity-80"></i>
+            <span class="kpi-number">@Model.Dashboard.TotalDepartments</span>
+            <span class="kpi-label">Departmanlar</span>
+        </div>
+        <div class="kpi-card kpi-purple">
+            <i class="bi bi-tags-fill text-3xl block mb-2 opacity-80"></i>
+            <span class="kpi-number">@Model.Dashboard.TotalCategories</span>
+            <span class="kpi-label">Kategoriler</span>
+        </div>
+        <div class="kpi-card kpi-teal">
+            <i class="bi bi-graph-up-arrow text-3xl block mb-2 opacity-80"></i>
+            <span class="kpi-number">@projectCompletionRate.ToString("F0")%</span>
+            <span class="kpi-label">Başarı Oranı</span>
+        </div>
+    </div>
+}

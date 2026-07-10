@@ -1,0 +1,53 @@
+﻿@page
+@model TMS.Pages.Admin.CategoriesModel
+@{
+    ViewData["Title"] = "Kategorileri Yönet";
+}
+
+<h1 class="page-heading"><i class="bi bi-tags mr-2"></i>Kategoriler</h1>
+
+<form method="post" class="flex flex-wrap gap-3 mb-4">
+    <input asp-for="NewCategory.Name" class="w-60" placeholder="Kategori adı" aria-label="Kategori adı" />
+    <input asp-for="NewCategory.Description" class="flex-1 min-w-[250px] max-w-md" placeholder="Açıklama (opsiyonel)" aria-label="Kategori açıklaması" />
+    <button type="submit" class="btn-primary whitespace-nowrap"><i class="bi bi-plus-lg" aria-hidden="true"></i>Kategori Ekle</button>
+</form>
+
+@if (!Model.Categories.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-tags"></i>
+        <h5 class="text-xl font-semibold mb-2">Henüz kategori yok</h5>
+        <p class="mb-0">Yukarıdaki formu kullanarak ilk kategoriyi ekleyin.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>İsim</th>
+                <th>Açıklama</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var cat in Model.Categories)
+            {
+                <tr>
+                    <td>@cat.Name</td>
+                    <td>@cat.Description</td>
+                    <td>
+                        <form method="post" asp-page-handler="Delete" asp-route-id="@cat.Id" style="display:inline;">
+                            <button type="submit" class="btn-danger"
+                                    onclick="return confirm('Bu kategoriyi silmek istediğinizden emin misiniz?');" aria-label="Kategoriyi sil">
+                                <i class="bi bi-trash" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}

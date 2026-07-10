@@ -1,0 +1,103 @@
+﻿@page "{id:int}"
+@model TMS.Pages.Projects.EditModel
+@{
+    ViewData["Title"] = "Projeyi Düzenle";
+}
+
+<h1 class="text-3xl font-bold mb-6"><i class="bi bi-pencil mr-2"></i>Projeyi Düzenle</h1>
+
+<div class="max-w-3xl">
+    <div class="bg-white rounded-lg shadow-sm border border-gray-200">
+        <div class="p-6">
+            <form method="post">
+                <div class="mb-4">
+                    <label asp-for="Project.Name" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <input asp-for="Project.Name" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                    <span asp-validation-for="Project.Name" class="text-red-600 text-sm"></span>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Project.Description" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <textarea asp-for="Project.Description" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" rows="4"></textarea>
+                    <span asp-validation-for="Project.Description" class="text-red-600 text-sm"></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label asp-for="Project.StartDate" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <input asp-for="Project.StartDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" type="date" />
+                        <span asp-validation-for="Project.StartDate" class="text-red-600 text-sm"></span>
+                    </div>
+                    <div>
+                        <label asp-for="Project.EndDate" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                        <input asp-for="Project.EndDate" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" type="date" />
+                        <span asp-validation-for="Project.EndDate" class="text-red-600 text-sm"></span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Project.Status" class="block text-sm font-medium text-gray-700 mb-1"></label>
+                    <select asp-for="Project.Status" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <option value="NotStarted">Başlamadı</option>
+                        <option value="InProgress">Devam Ediyor</option>
+                        <option value="Completed">Tamamlandı</option>
+                        <option value="OnHold">Beklemede</option>
+                        <option value="Cancelled">İptal Edildi</option>
+                    </select>
+                    <span asp-validation-for="Project.Status" class="text-red-600 text-sm"></span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label asp-for="Project.DepartmentId" class="block text-sm font-medium text-gray-700 mb-1">Departman</label>
+                        <select asp-for="Project.DepartmentId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" asp-items="Model.DepartmentList">
+                            <option value="">— Departman Seçin —</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label asp-for="Project.CategoryId" class="block text-sm font-medium text-gray-700 mb-1">Kategori</label>
+                        <select asp-for="Project.CategoryId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent" asp-items="Model.CategoryList">
+                            <option value="">— Kategori Seçin —</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label asp-for="Project.ManagerUserId" class="block text-sm font-medium text-gray-700 mb-1">Proje Sorumlusu <span class="text-red-500">*</span></label>
+                    <select asp-for="Project.ManagerUserId" class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            asp-items="Model.UserList">
+                        <option value="">— Sorumlu Seçin —</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Ekip Üyeleri</label>
+                    <div class="border border-gray-300 rounded-lg p-3 max-h-48 overflow-y-auto bg-white">
+                        @foreach (var user in Model.UserList)
+                        {
+                            <label class="flex items-center gap-2 py-1.5 hover:bg-gray-50 rounded px-1 cursor-pointer text-sm">
+                                <input type="checkbox" name="MemberUserIds" value="@user.Value"
+                                       @(Model.MemberUserIds.Contains(user.Value) ? "checked" : "")
+                                       class="rounded border-gray-300" />
+                                <span>@user.Text</span>
+                            </label>
+                        }
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center">
+                        <i class="bi bi-save mr-1"></i>Değişiklikleri Kaydet
+                    </button>
+                    <a asp-page="Details" asp-route-id="@Model.Project.Id" class="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg transition-colors inline-flex items-center">
+                        <i class="bi bi-x mr-1"></i>İptal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

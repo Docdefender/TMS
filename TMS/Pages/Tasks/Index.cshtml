@@ -1,0 +1,209 @@
+﻿@page
+@model TMS.Pages.Tasks.IndexModel
+@{
+    ViewData["Title"] = "Görevler";
+}
+
+<h1 class="page-heading"><i class="bi bi-list-task mr-2"></i>Görevler</h1>
+
+<!-- Filtre Formu -->
+<form method="get" id="filterForm" class="mb-4">
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-2">
+
+            <!-- Yeni Görev Butonu -->
+            <a asp-page="Create" class="btn-primary whitespace-nowrap">
+                <i class="bi bi-plus-lg"></i>Yeni Görev
+            </a>
+
+            <!-- Arama -->
+            <div class="relative flex-1 min-w-[180px]">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="text" name="Search" value="@Model.Search"
+                       placeholder="Görev ara..."
+                       class="w-full pl-9 pr-3 py-2" />
+            </div>
+
+            <!-- Başlangıç; -->
+            <div class="relative">
+                <i class="bi bi-calendar-event absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="date" name="StartDate"
+                       value="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       title="Son tarih başlangıcı"
+                       class="pl-9 pr-3 py-2" />
+            </div>
+
+            <!-- Bitiş -->
+            <div class="relative">
+                <i class="bi bi-calendar-check absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="date" name="EndDate"
+                       value="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                       title="Son tarih bitişi"
+                       class="pl-9 pr-3 py-2" />
+            </div>
+
+            <!-- Durum Dropdown -->
+            <div class="relative" id="taskStatusDropdownWrapper">
+                <button type="button" id="taskStatusDropdownBtn"
+                        onclick="toggleTaskStatusDropdown()"
+                        class="btn-secondary whitespace-nowrap">
+                    <i class="bi bi-funnel"></i>
+                    <span id="taskStatusDropdownLabel">
+                        @(Model.Statuses.Count > 0 ? $"{Model.Statuses.Count} durum seçili" : "Durum Filtrele")
+                    </span>
+                    <i class="bi bi-chevron-down text-xs"></i>
+                </button>
+                <div id="taskStatusDropdownMenu"
+                     class="hidden absolute top-full left-0 mt-1 rounded-lg shadow-lg z-30 w-52 p-2"
+                     style="background: var(--bg-card); border: 1px solid var(--border-card);">
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="ToDo" class="rounded" @(Model.Statuses.Contains("ToDo") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0"></span>Yapılacak
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="InProgress" class="rounded" @(Model.Statuses.Contains("InProgress") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-sky-500 flex-shrink-0"></span>Devam Ediyor
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="Done" class="rounded" @(Model.Statuses.Contains("Done") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>Tamamlandı
+                    </label>
+                    <hr class="my-1" style="border-color: var(--border-color);" />
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="overdue" class="rounded" @(Model.Statuses.Contains("overdue") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0"></span>Gecikmiş
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="InReview" class="rounded" @(Model.Statuses.Contains("InReview") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0"></span>Gözden Geçiriliyor
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary whitespace-nowrap">
+                <i class="bi bi-search"></i>Filtrele
+            </button>
+
+            @if (Model.HasActiveFilter)
+            {
+                <a asp-page="Index" class="btn-secondary whitespace-nowrap">
+                    <i class="bi bi-x-circle"></i>Temizle
+                </a>
+            }
+        </div>
+
+        @if (Model.HasActiveFilter)
+        {
+            <div class="flex flex-wrap gap-2 mt-2 pt-2" style="border-top: 1px solid var(--border-color);">
+                @if (!string.IsNullOrEmpty(Model.Search))
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-search"></i>@Model.Search</span>
+                }
+                @if (Model.StartDate.HasValue)
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-calendar-event"></i>Sonra: @Model.StartDate.Value.ToString("dd.MM.yyyy")</span>
+                }
+                @if (Model.EndDate.HasValue)
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-calendar-check"></i>Önce: @Model.EndDate.Value.ToString("dd.MM.yyyy")</span>
+                }
+                @foreach (var s in Model.Statuses)
+                {
+                    var label = s switch { "ToDo" => "Yapılacak", "InProgress" => "Devam Ediyor", "Done" => "Tamamlandı", "Blocked" => "Engellendi", "overdue" => "Gecikmiş", _ => s };
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-tag"></i>@label</span>
+                }
+            </div>
+        }
+    </div>
+</form>
+
+@if (!Model.Tasks.Any())
+{
+    <div class="empty-state">
+        <i class="bi bi-clipboard-x"></i>
+        <h5>Hiç Görev Bulunamadı</h5>
+        <p class="mb-0">Görevler projelerde oluşturulduktan sonra burada görünecektir.</p>
+    </div>
+}
+else
+{
+    <div class="table-container">
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Başlangıç</th>
+                <th>Proje</th>
+                <th>Durum</th>
+                <th>Kategori</th>
+                <th>Atanan</th>
+                <th>Son Tarih</th>
+                <th>İşlemler</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var task in Model.Tasks)
+            {
+                var isOverdue = task.DueDate.HasValue && task.DueDate.Value < DateTime.Today && task.Status != TMS.Models.TaskStatus.Done;
+                <tr>
+                    <td>@task.Title</td>
+                    <td>
+                        <a asp-page="/Projects/Details" asp-route-id="@task.ProjectId"
+                           style="color: var(--color-primary);">@task.Project?.Name</a>
+                    </td>
+                    <td><span class="badge @GetStatusBadge(task.Status)">@GetTaskStatusText(task.Status)</span></td>
+                    <td>@(task.Category?.Name ?? "—")</td>
+                    <td>@(task.AssignedToUser?.FullName ?? "—")</td>
+                    <td class="@(isOverdue ? "font-semibold" : "")" style="@(isOverdue ? "color: var(--color-danger);" : "")">
+                        @task.DueDate?.ToString("yyyy-MM-dd")
+                    </td>
+                    <td>
+                        <a asp-page="/Projects/Details" asp-route-id="@task.ProjectId" class="btn-primary">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    </div>
+}
+
+@functions {
+    string GetStatusBadge(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo       => "badge-todo",
+        TMS.Models.TaskStatus.InProgress => "badge-inprogress",
+        TMS.Models.TaskStatus.InReview   => "badge-inreview",
+        TMS.Models.TaskStatus.Done       => "badge-done",
+        _ => "badge-default"
+    };
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo       => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview   => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done       => "Tamamlandı",
+        _ => status.ToString()
+    };
+}
+
+@section Scripts {
+<script>
+    function toggleTaskStatusDropdown() {
+        const menu = document.getElementById('taskStatusDropdownMenu');
+        menu.classList.toggle('hidden');
+    }
+    document.addEventListener('click', function (e) {
+        const wrapper = document.getElementById('taskStatusDropdownWrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            document.getElementById('taskStatusDropdownMenu').classList.add('hidden');
+        }
+    });
+    document.querySelectorAll('#taskStatusDropdownMenu input[type=checkbox]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            document.getElementById('filterForm').submit();
+        });
+    });
+</script>
+}

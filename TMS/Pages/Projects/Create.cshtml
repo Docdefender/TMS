@@ -1,57 +1,102 @@
-@page
+﻿@page
 @model TMS.Pages.Projects.CreateModel
 @{
-    ViewData["Title"] = "Create Project";
+    ViewData["Title"] = "Proje Oluştur";
 }
 
-<h1>Create Project</h1>
+<h1 class="page-heading"><i class="bi bi-folder-plus mr-2"></i>Proje Oluştur</h1>
 
-<hr />
-<div class="row">
-    <div class="col-md-6">
+<div class="max-w-2xl">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                <i class="bi bi-folder-plus"></i>Proje Bilgileri
+            </h2>
+        </div>
+        <div class="card-body">
         <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <div asp-validation-summary="ModelOnly" class="alert-danger mb-4"></div>
 
-            <div class="mb-3">
-                <label asp-for="Project.Name" class="form-label"></label>
-                <input asp-for="Project.Name" class="form-control" />
-                <span asp-validation-for="Project.Name" class="text-danger"></span>
+            <div class="mb-4">
+                <label asp-for="Project.Name"></label>
+                <input asp-for="Project.Name" class="w-full mt-1" />
+                <span asp-validation-for="Project.Name" class="text-red-600 text-sm"></span>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Project.Description" class="form-label"></label>
-                <textarea asp-for="Project.Description" class="form-control" rows="3"></textarea>
-                <span asp-validation-for="Project.Description" class="text-danger"></span>
+            <div class="mb-4">
+                <label asp-for="Project.Description"></label>
+                <textarea asp-for="Project.Description" class="w-full mt-1" rows="3"></textarea>
+                <span asp-validation-for="Project.Description" class="text-red-600 text-sm"></span>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Project.StartDate" class="form-label"></label>
-                <input asp-for="Project.StartDate" class="form-control" type="date" />
-                <span asp-validation-for="Project.StartDate" class="text-danger"></span>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label asp-for="Project.StartDate"></label>
+                    <input asp-for="Project.StartDate" class="w-full mt-1" type="date" />
+                    <span asp-validation-for="Project.StartDate" class="text-red-600 text-sm"></span>
+                </div>
+                <div>
+                    <label asp-for="Project.EndDate"></label>
+                    <input asp-for="Project.EndDate" class="w-full mt-1" type="date" />
+                    <span asp-validation-for="Project.EndDate" class="text-red-600 text-sm"></span>
+                </div>
             </div>
 
-            <div class="mb-3">
-                <label asp-for="Project.EndDate" class="form-label"></label>
-                <input asp-for="Project.EndDate" class="form-control" type="date" />
-                <span asp-validation-for="Project.EndDate" class="text-danger"></span>
-            </div>
-
-            <div class="mb-3">
-                <label asp-for="Project.Status" class="form-label"></label>
-                <select asp-for="Project.Status" class="form-select"
-                        asp-items="Html.GetEnumSelectList<TMS.Models.ProjectStatus>()">
+            <div class="mb-4">
+                <label asp-for="Project.Status"></label>
+                <select asp-for="Project.Status" class="w-full mt-1">
+                    <option value="NotStarted">Başlamadı</option>
+                    <option value="InProgress">Devam Ediyor</option>
+                    <option value="Completed">Tamamlandı</option>
+                    <option value="OnHold">Beklemede</option>
+                    <option value="Cancelled">İptal Edildi</option>
                 </select>
-                <span asp-validation-for="Project.Status" class="text-danger"></span>
+                <span asp-validation-for="Project.Status" class="text-red-600 text-sm"></span>
             </div>
 
-            <div class="mb-3">
-                <button type="submit" class="btn btn-primary">Create</button>
-                <a asp-page="Index" class="btn btn-secondary">Cancel</a>
+            <div class="mb-4">
+                <label asp-for="Project.ManagerUserId">Proje Sorumlusu <span style="color:var(--color-danger)">*</span></label>
+                <select asp-for="Project.ManagerUserId" class="w-full mt-1" asp-items="Model.UserList">
+                    <option value="">— Sorumlu Seçin —</option>
+                </select>
+            </div>
+
+            <div class="mb-4">
+                <label class="block mb-2">Ekip Üyeleri</label>
+                <div class="border rounded-lg p-3 max-h-48 overflow-y-auto" style="border-color: var(--border-input); background: var(--bg-input);">
+                    @foreach (var user in Model.UserList)
+                    {
+                        <label class="flex items-center gap-2 py-1.5 rounded px-1 cursor-pointer text-sm">
+                            <input type="checkbox" name="MemberUserIds" value="@user.Value" class="rounded" />
+                            <span>@user.Text</span>
+                        </label>
+                    }
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label asp-for="Project.DepartmentId">Departman</label>
+                    <select asp-for="Project.DepartmentId" class="w-full mt-1" asp-items="Model.DepartmentList">
+                        <option value="">— Departman Seçin —</option>
+                    </select>
+                </div>
+                <div>
+                    <label asp-for="Project.CategoryId">Kategori</label>
+                    <select asp-for="Project.CategoryId" class="w-full mt-1" asp-items="Model.CategoryList">
+                        <option value="">— Kategori Seçin —</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button type="submit" class="btn-primary"><i class="bi bi-check-lg"></i>Oluştur</button>
+                <a asp-page="Index" class="btn-secondary"><i class="bi bi-x-lg"></i>İptal</a>
             </div>
         </form>
+        </div>
     </div>
 </div>
-
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 }

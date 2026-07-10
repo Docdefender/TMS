@@ -1,0 +1,53 @@
+@page
+@model TMS.Pages.Account.LoginModel
+@{
+    ViewData["Title"] = "Giriş Yap";
+}
+
+<div class="auth-card">
+    <div class="flex justify-center mb-6">
+        <img src="~/favicon.png"
+             alt="Dizge Logo"
+             class="w-20 h-20 rounded object-contain" />
+    </div>
+    <h1 class="text-2xl font-semibold text-center mb-6" style="color: var(--text-heading);">Giriş Yap</h1>
+
+    <form method="post">
+        <div asp-validation-summary="ModelOnly" class="alert-danger mb-4"></div>
+
+        <div class="mb-4">
+            <label asp-for="Input.Email" class="block mb-1">E-posta</label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color: var(--text-muted);">
+                    <i class="bi bi-envelope" aria-hidden="true"></i>
+                </span>
+                <input asp-for="Input.Email" class="w-full pl-10 pr-3 py-2" />
+            </div>
+            <span asp-validation-for="Input.Email" class="text-red-600 text-sm"></span>
+        </div>
+
+        <div class="mb-4">
+            <label asp-for="Input.Password" class="block mb-1">Şifre</label>
+            <div class="relative">
+                <span class="absolute inset-y-0 left-0 flex items-center pl-3" style="color: var(--text-muted);">
+                    <i class="bi bi-lock" aria-hidden="true"></i>
+                </span>
+                <input asp-for="Input.Password" class="w-full pl-10 pr-3 py-2" type="password" />
+            </div>
+            <span asp-validation-for="Input.Password" class="text-red-600 text-sm"></span>
+        </div>
+
+        <div class="mb-4 flex items-center">
+            <input asp-for="Input.RememberMe" class="w-4 h-4 rounded" />
+            <label asp-for="Input.RememberMe" class="ml-2 text-sm">Beni Hatırla</label>
+        </div>
+
+        <button type="submit" class="btn-primary w-full justify-center">
+            <i class="bi bi-box-arrow-in-right"></i>Giriş Yap
+        </button>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

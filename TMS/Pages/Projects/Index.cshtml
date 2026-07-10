@@ -1,29 +1,151 @@
-@page
+﻿@page
 @model TMS.Pages.Projects.IndexModel
 @{
-    ViewData["Title"] = "Projects";
+    ViewData["Title"] = "Projeler";
 }
 
-<h1>Projects</h1>
+<h1 class="page-heading"><i class="bi bi-folder2-open mr-2"></i>Projeler</h1>
 
-<p>
-    <a asp-page="Create" class="btn btn-primary">Create New Project</a>
-</p>
+<!-- Filtre Formu -->
+<form method="get" id="filterForm" class="mb-4">
+    <div class="filter-bar">
+        <div class="flex flex-wrap items-center gap-2">
+
+            <!-- Yeni Proje Butonu -->
+            <a asp-page="Create" class="btn-primary whitespace-nowrap">
+                <i class="bi bi-plus-lg"></i>Yeni Proje
+            </a>
+
+            <!-- Arama -->
+            <div class="relative flex-1 min-w-[180px]">
+                <i class="bi bi-search absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="text" name="Search" value="@Model.Search"
+                       placeholder="Proje ara..."
+                       class="w-full pl-9 pr-3 py-2" style="border-radius:0.5rem;" />
+            </div>
+
+            <!-- Başlangıç Tarihi -->
+            <div class="relative">
+                <i class="bi bi-calendar-event absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="date" name="StartDate"
+                       value="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       title="Başlangıç tarihi"
+                       class="pl-9 pr-3 py-2" />
+            </div>
+
+            <!-- Bitiş Tarihi -->
+            <div class="relative">
+                <i class="bi bi-calendar-check absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style="color: var(--text-muted);"></i>
+                <input type="date" name="EndDate"
+                       value="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                       title="Bitiş tarihi"
+                       class="pl-9 pr-3 py-2" />
+            </div>
+
+            <!-- Durum Dropdown -->
+            <div class="relative" id="statusDropdownWrapper">
+                <button type="button" id="statusDropdownBtn"
+                        onclick="toggleProjectStatusDropdown()"
+                        class="btn-secondary whitespace-nowrap">
+                    <i class="bi bi-funnel"></i>
+                    <span id="statusDropdownLabel">
+                        @(Model.Statuses.Count > 0 ? $"{Model.Statuses.Count} durum seçili" : "Durum Filtrele")
+                    </span>
+                    <i class="bi bi-chevron-down text-xs"></i>
+                </button>
+                <div id="statusDropdownMenu"
+                     class="hidden absolute top-full left-0 mt-1 rounded-lg shadow-lg z-30 w-52 p-2"
+                     style="background: var(--bg-card); border: 1px solid var(--border-card);">
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="NotStarted" class="rounded" @(Model.Statuses.Contains("NotStarted") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-gray-500 flex-shrink-0"></span>Başlamadı
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="InProgress" class="rounded" @(Model.Statuses.Contains("InProgress") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-sky-500 flex-shrink-0"></span>Devam Ediyor
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="Completed" class="rounded" @(Model.Statuses.Contains("Completed") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 flex-shrink-0"></span>Tamamlandı
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="OnHold" class="rounded" @(Model.Statuses.Contains("OnHold") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0"></span>Beklemede
+                    </label>
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="Cancelled" class="rounded" @(Model.Statuses.Contains("Cancelled") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full flex-shrink-0" style="background: var(--color-danger);"></span>İptal Edildi
+                    </label>
+                    <hr class="my-1" style="border-color: var(--border-color);" />
+                    <label class="flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer text-sm" style="color: var(--text-secondary);">
+                        <input type="checkbox" name="Statuses" value="overdue" class="rounded" @(Model.Statuses.Contains("overdue") ? "checked" : "") />
+                        <span class="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0"></span>Gecikmiş
+                    </label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-primary whitespace-nowrap">
+                <i class="bi bi-search"></i>Filtrele
+            </button>
+
+            @if (Model.HasActiveFilter)
+            {
+                <a asp-page="Index" class="btn-secondary whitespace-nowrap">
+                    <i class="bi bi-x-circle"></i>Temizle
+                </a>
+            }
+        </div>
+
+        @if (Model.HasActiveFilter)
+        {
+            <div class="flex flex-wrap gap-2 mt-2 pt-2" style="border-top: 1px solid var(--border-color);">
+                @if (!string.IsNullOrEmpty(Model.Search))
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-search"></i>@Model.Search</span>
+                }
+                @if (Model.StartDate.HasValue)
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-calendar-event"></i>Sonra: @Model.StartDate.Value.ToString("dd.MM.yyyy")</span>
+                }
+                @if (Model.EndDate.HasValue)
+                {
+                    <span class="filter-chip filter-chip-active"><i class="bi bi-calendar-check"></i>Önce: @Model.EndDate.Value.ToString("dd.MM.yyyy")</span>
+                }
+                @foreach (var s in Model.Statuses)
+                {
+                    var label = s switch { "NotStarted" => "Başlamadı", "InProgress" => "Devam Ediyor", "Completed" => "Tamamlandı", "OnHold" => "Beklemede", "Cancelled" => "İptal Edildi", "overdue" => "Gecikmiş", _ => s };
+                    <span class="filter-chip filter-chip-active">
+                        <i class="bi bi-tag"></i>@label
+                    </span>
+                }
+            </div>
+        }
+    </div>
+</form>
 
 @if (!Model.Projects.Any())
 {
-    <div class="alert alert-info">No projects found. Create your first project!</div>
+    <div class="empty-state">
+        <i class="bi bi-folder-plus"></i>
+        <h5>Hiç proje bulunamadı</h5>
+        <p class="mb-0">İlk projenizi oluşturarak başlayın!</p>
+    </div>
 }
 else
 {
-    <table class="table table-striped">
+    <div class="table-container">
+    <table class="data-table">
         <thead>
             <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Actions</th>
+                <th>İsim</th>
+                <th>Durum</th>
+                <th>Departman</th>
+                <th>Kategori</th>
+                <th>Başlangıç Tarihi</th>
+                <th>Bitiş Tarihi</th>
+                <th>Oluşturan</th>
+                <th>Sorumlu</th>
+                <th>İşlemler</th>
             </tr>
         </thead>
         <tbody>
@@ -31,30 +153,63 @@ else
             {
                 <tr>
                     <td>@project.Name</td>
-                    <td>
-                        <span class="badge @GetStatusBadgeClass(project.Status)">
-                            @project.Status
-                        </span>
-                    </td>
+                    <td><span class="badge @GetStatusBadgeClass(project.Status)">@GetProjectStatusText(project.Status)</span></td>
+                    <td>@(project.Department?.Name ?? "—")</td>
+                    <td>@(project.Category?.Name ?? "—")</td>
                     <td>@project.StartDate.ToString("yyyy-MM-dd")</td>
                     <td>@project.EndDate?.ToString("yyyy-MM-dd")</td>
+                    <td>@(project.CreatedByUser?.FullName ?? "—")</td>
+                    <td>@(project.Manager?.FullName ?? "—")</td>
                     <td>
-                        <a asp-page="Details" asp-route-id="@project.Id" class="btn btn-sm btn-info">Details</a>
+                        <a asp-page="Details" asp-route-id="@project.Id" class="btn-primary">
+                            <i class="bi bi-eye"></i>Detaylar
+                        </a>
                     </td>
                 </tr>
             }
         </tbody>
     </table>
+    </div>
 }
 
 @functions {
     string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
     {
-        TMS.Models.ProjectStatus.NotStarted => "bg-secondary",
-        TMS.Models.ProjectStatus.InProgress => "bg-primary",
-        TMS.Models.ProjectStatus.Completed => "bg-success",
-        TMS.Models.ProjectStatus.OnHold => "bg-warning text-dark",
-        TMS.Models.ProjectStatus.Cancelled => "bg-danger",
-        _ => "bg-secondary"
+        TMS.Models.ProjectStatus.NotStarted => "badge-notstarted",
+        TMS.Models.ProjectStatus.InProgress => "badge-inprogress",
+        TMS.Models.ProjectStatus.Completed  => "badge-completed",
+        TMS.Models.ProjectStatus.OnHold     => "badge-onhold",
+        TMS.Models.ProjectStatus.Cancelled  => "badge-cancelled",
+        _ => "badge-default"
     };
+
+    string GetProjectStatusText(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "Başlamadı",
+        TMS.Models.ProjectStatus.InProgress => "Devam Ediyor",
+        TMS.Models.ProjectStatus.Completed  => "Tamamlandı",
+        TMS.Models.ProjectStatus.OnHold     => "Beklemede",
+        TMS.Models.ProjectStatus.Cancelled  => "İptal Edildi",
+        _ => status.ToString()
+    };
+}
+
+@section Scripts {
+<script>
+    function toggleProjectStatusDropdown() {
+        const menu = document.getElementById('statusDropdownMenu');
+        menu.classList.toggle('hidden');
+    }
+    document.addEventListener('click', function (e) {
+        const wrapper = document.getElementById('statusDropdownWrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            document.getElementById('statusDropdownMenu').classList.add('hidden');
+        }
+    });
+    document.querySelectorAll('#statusDropdownMenu input[type=checkbox]').forEach(function (cb) {
+        cb.addEventListener('change', function () {
+            document.getElementById('filterForm').submit();
+        });
+    });
+</script>
 }
