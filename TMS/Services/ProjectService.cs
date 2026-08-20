@@ -160,9 +160,22 @@ public class ProjectService
         var project = await _context.Projects.FindAsync(id);
         if (project is not null)
         {
-            project.IsDeleted      = true;
-            project.DeletedAt      = DateTime.UtcNow;
+            project.IsDeleted       = true;
+            project.DeletedAt       = DateTime.UtcNow;
             project.DeletedByUserId = userId;
+
+            // Projeye ait tüm görevleri de soft-delete yap
+            var tasks = await _context.TaskItems
+                .Where(t => t.ProjectId == id && !t.IsDeleted)
+                .ToListAsync();
+
+            foreach (var task in tasks)
+            {
+                task.IsDeleted       = true;
+                task.DeletedAt       = DateTime.UtcNow;
+                task.DeletedByUserId = userId;
+            }
+
             await _context.SaveChangesAsync();
             await _auditLogService.LogAsync("SoftDelete", "Project", id, userId, $"Project '{project.Name}' soft deleted.");
         }

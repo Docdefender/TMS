@@ -52,16 +52,17 @@ using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+    // Roller — sadece yoksa ekle
     string[] roles = ["Admin", "Manager", "Member"];
     foreach (var role in roles)
     {
         if (!await roleManager.RoleExistsAsync(role))
-        {
             await roleManager.CreateAsync(new IdentityRole(role));
-        }
     }
 
+    // Admin kullanıcı — sadece yoksa ekle
     var adminEmail = "admin@tms.com";
     var adminUser = await userManager.FindByEmailAsync(adminEmail);
     if (adminUser is null)
@@ -75,6 +76,30 @@ using (var scope = app.Services.CreateScope())
         };
         await userManager.CreateAsync(adminUser, "Admin123");
         await userManager.AddToRoleAsync(adminUser, "Admin");
+    }
+
+    // Departmanlar — tablo tamamen boşsa varsayılanları ekle
+    if (!context.Departments.IgnoreQueryFilters().Any())
+    {
+        context.Departments.AddRange(
+            new Department { Name = "Engineering", Description = "Software development and engineering" },
+            new Department { Name = "Marketing", Description = "Marketing and communications" },
+            new Department { Name = "Human Resources", Description = "HR and people operations" },
+            new Department { Name = "Finance", Description = "Finance and accounting" }
+        );
+        await context.SaveChangesAsync();
+    }
+
+    // Kategoriler — tablo tamamen boşsa varsayılanları ekle
+    if (!context.Categories.IgnoreQueryFilters().Any())
+    {
+        context.Categories.AddRange(
+            new Category { Name = "Bug Fix", Description = "Bug fixes and patches" },
+            new Category { Name = "Feature", Description = "New feature development" },
+            new Category { Name = "Improvement", Description = "Improvements to existing features" },
+            new Category { Name = "Research", Description = "Research and investigation" }
+        );
+        await context.SaveChangesAsync();
     }
 }
 

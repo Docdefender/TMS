@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
 using TMS.Data;
 using TMS.Models;
 
@@ -16,7 +16,7 @@ public class DashboardService
     public async Task<DashboardViewModel> GetDashboardAsync(string userId, bool showAll = false)
     {
         var projectsQuery = _context.Projects.AsQueryable();
-        var tasksQuery = _context.TaskItems.AsQueryable();
+        var tasksQuery = _context.TaskItems.Where(t => !t.IsDeleted).AsQueryable(); // ← düzeltildi
 
         if (!showAll)
         {
@@ -39,7 +39,7 @@ public class DashboardService
             .ToListAsync();
 
         var myAssignedTasks = await _context.TaskItems
-            .Where(t => t.AssignedToUserId == userId && t.Status != Models.TaskStatus.Done)
+            .Where(t => !t.IsDeleted && t.AssignedToUserId == userId && t.Status != Models.TaskStatus.Done) // ← düzeltildi
             .Include(t => t.Project)
             .OrderBy(t => t.DueDate)
             .Take(10)
@@ -60,7 +60,7 @@ public class DashboardService
             .ToListAsync();
 
         var upcomingTasks = await _context.TaskItems
-            .Where(t => t.DueDate.HasValue && t.DueDate.Value >= now && t.DueDate.Value <= nextWeek
+            .Where(t => !t.IsDeleted && t.DueDate.HasValue && t.DueDate.Value >= now && t.DueDate.Value <= nextWeek // ← düzeltildi
                 && t.Status != Models.TaskStatus.Done)
             .Select(t => new { Type = "Task", Name = t.Title, DueDate = t.DueDate ?? DateTime.MinValue, Id = t.Id })
             .ToListAsync();

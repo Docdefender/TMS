@@ -150,19 +150,5 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             .WithMany(t => t.Attachments)
             .HasForeignKey(a => a.TaskItemId)
             .OnDelete(DeleteBehavior.NoAction);
-
-        modelBuilder.Entity<Department>().HasData(
-            new Department { Id = 1, Name = "Engineering", Description = "Software development and engineering" },
-            new Department { Id = 2, Name = "Marketing", Description = "Marketing and communications" },
-            new Department { Id = 3, Name = "Human Resources", Description = "HR and people operations" },
-            new Department { Id = 4, Name = "Finance", Description = "Finance and accounting" }
-        );
-
-        modelBuilder.Entity<Category>().HasData(
-            new Category { Id = 1, Name = "Bug Fix", Description = "Bug fixes and patches" },
-            new Category { Id = 2, Name = "Feature", Description = "New feature development" },
-            new Category { Id = 3, Name = "Improvement", Description = "Improvements to existing features" },
-            new Category { Id = 4, Name = "Research", Description = "Research and investigation" }
-        );
     }
 }
