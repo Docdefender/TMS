@@ -1,0 +1,49 @@
+@model TMS.Pages.Pipeline.DetailsModel
+@{
+    var filters = new[]
+    {
+        (Value: "all", Label: "Tümü"),
+        (Value: "structure", Label: "Aşamalar ve checkpoint'ler"),
+        (Value: "tasks", Label: "Görevler"),
+        (Value: "relations", Label: "Bağlantılar")
+    };
+}
+
+<section class="pipeline-history" aria-labelledby="pipeline-history-title">
+    <header class="pipeline-history-head">
+        <div>
+            <span class="dashboard-eyebrow">İŞLEM AKIŞI</span>
+            <h2 id="pipeline-history-title">Pipeline geçmişi</h2>
+            <p>Projenin aşama, checkpoint, görev ve bağlantı hareketleri en yeniden eskiye sıralanır.</p>
+        </div>
+        <span class="pipeline-history-count">@Model.History.Count kayıt</span>
+    </header>
+    <nav class="pipeline-history-filters" aria-label="Geçmiş filtresi">
+        @foreach (var filter in filters)
+        {
+            <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="history"
+               asp-route-historyFilter="@filter.Value" class="@(Model.HistoryFilter == filter.Value ? "is-active" : "")">@filter.Label</a>
+        }
+    </nav>
+    @if (Model.History.Count == 0)
+    {
+        <div class="pipeline-history-empty"><i class="bi bi-clock-history"></i><strong>Henüz kayıt yok</strong><span>Bu filtreye ait pipeline hareketleri burada görünecek.</span></div>
+    }
+    else
+    {
+        <div class="pipeline-history-list">
+            @foreach (var entry in Model.History)
+            {
+                var actor = entry.Log.User?.FullName ?? entry.Log.User?.Email ?? "Sistem";
+                <article class="pipeline-history-item">
+                    <div class="pipeline-history-icon"><i class="bi @entry.Icon"></i></div>
+                    <div class="pipeline-grow">
+                        <div class="pipeline-history-title"><strong>@entry.Title</strong><span>@actor</span></div>
+                        @if (!string.IsNullOrWhiteSpace(entry.Description)) { <p>@entry.Description</p> }
+                    </div>
+                    <time datetime="@entry.Log.Timestamp.ToString("O")">@entry.Log.Timestamp.ToString("dd.MM.yyyy HH:mm")</time>
+                </article>
+            }
+        </div>
+    }
+</section>

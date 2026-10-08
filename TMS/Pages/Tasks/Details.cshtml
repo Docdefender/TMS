@@ -1,0 +1,838 @@
+@page "{id:int}"
+@model TMS.Pages.Tasks.DetailsModel
+
+@{
+    ViewData["Title"] = Model.TaskItem.Title;
+
+    var isOverdue =
+        Model.TaskItem.DueDate.HasValue
+        && Model.TaskItem.DueDate.Value < DateTime.Today
+        && Model.TaskItem.Status != TMS.Models.TaskStatus.Done;
+}
+
+
+<!-- ======================================================
+     TASK HEADER
+     ====================================================== -->
+
+<section class="task-detail-header">
+
+    <div class="task-detail-heading">
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu">
+            <a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i>
+            @if (Model.CanViewProject)
+            {
+                <a asp-page="/Projects/Details" asp-route-id="@Model.TaskItem.ProjectId">@(Model.TaskItem.Project?.Name ?? "Proje")</a>
+            }
+            else
+            {
+                <a asp-page="/Tasks/Index">Görevler</a>
+            }
+            <i class="bi bi-chevron-right"></i><strong>TSK-@Model.TaskItem.Id.ToString("D5")</strong>
+        </nav>
+        @if (Model.LinkedTicketId.HasValue)
+        {
+            <a asp-page="/Tickets/Details" asp-route-id="@Model.LinkedTicketId" class="project-back-link">Kaynak Ticket #@Model.LinkedTicketId</a>
+            <span>@Model.LinkedTicketRequester · @Model.LinkedTicketCreatedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+            @if (Model.LinkedTicketHasNewReply) { <span class="task-overdue-badge">Ticket'ta yeni yanıt var</span> }
+        }
+
+
+        <div class="task-title-row">
+
+            <h1>@Model.TaskItem.Title</h1>
+
+            <span class="project-status-badge @GetTaskBadge(Model.TaskItem.Status)">
+                @GetTaskStatusText(Model.TaskItem.Status)
+            </span>
+
+            <span class="task-priority task-priority-@Model.TaskItem.Priority.ToString().ToLowerInvariant()">
+                <i class="bi bi-flag-fill"></i>
+                @GetPriorityText(Model.TaskItem.Priority)
+            </span>
+
+            @if (isOverdue)
+            {
+                <span class="task-overdue-badge">
+                    <i class="bi bi-exclamation-circle"></i>
+                    Gecikmiş
+                </span>
+            }
+
+        </div>
+
+
+        @if (Model.TaskItem.Labels.Count > 0)
+        {
+            <div class="task-detail-labels" aria-label="Görev etiketleri">
+                @foreach (var label in Model.TaskItem.Labels.OrderBy(x => x.TaskLabel.Name))
+                {
+                    <span class="task-label-chip" style="--task-label-color:@label.TaskLabel.Color">@label.TaskLabel.Name</span>
+                }
+            </div>
+        }
+
+    </div>
+
+
+    <div class="task-detail-actions">
+
+        @if (Model.CanEdit)
+        {
+            <a asp-page="Edit"
+               asp-route-id="@Model.TaskItem.Id"
+               class="project-action-button project-action-secondary">
+
+                <i class="bi bi-pencil"></i>
+                Düzenle
+
+            </a>
+        }
+
+
+        @if (Model.CanDelete)
+        {
+            <form method="post"
+                  asp-page-handler="DeleteTask">
+
+                <button type="submit"
+                        class="project-action-button project-action-danger"
+                        onclick="return confirm('Bu görevi silmek istediğinizden emin misiniz?');">
+
+                    <i class="bi bi-trash"></i>
+                    Sil
+
+                </button>
+
+            </form>
+        }
+
+    </div>
+
+</section>
+
+@if (TempData["TaskError"] is string taskError)
+{
+    <div class="pipeline-message task-dependency-message" role="alert">@taskError</div>
+}
+
+@if (Model.TaskItem.PrerequisiteDependencies.Count > 0 || Model.TaskItem.DependentDependencies.Count > 0)
+{
+    var waitingDependencies = Model.TaskItem.PrerequisiteDependencies
+        .Count(x => x.PrerequisiteTask.Status != TMS.Models.TaskStatus.Done);
+    <section class="task-dependency-summary @(waitingDependencies > 0 ? "is-blocked" : "")" data-detail-panel="overview">
+        <header>
+            <div><span class="project-section-icon"><i class="bi bi-diagram-2"></i></span><div><h2>Görev bağımlılıkları</h2><p>Bu görevin öncesinde ve sonrasında tamamlanması gereken işler</p></div></div>
+            @if (waitingDependencies > 0) { <strong><i class="bi bi-lock"></i> @waitingDependencies ön koşul bekleniyor</strong> }
+        </header>
+        <div class="task-dependency-columns">
+            <div>
+                <h3>Önce tamamlanması gerekenler</h3>
+                @if (Model.TaskItem.PrerequisiteDependencies.Count == 0) { <p>Ön koşul bulunmuyor.</p> }
+                @foreach (var dependency in Model.TaskItem.PrerequisiteDependencies.OrderBy(x => x.PrerequisiteTask.Title))
+                {
+                    var complete = dependency.PrerequisiteTask.Status == TMS.Models.TaskStatus.Done;
+                    <a asp-page="Details" asp-route-id="@dependency.PrerequisiteTaskId"><i class="bi @(complete ? "bi-check-circle-fill" : "bi-hourglass-split")"></i><span>@dependency.PrerequisiteTask.Title</span><em>@(complete ? "Tamamlandı" : "Bekleniyor")</em></a>
+                }
+            </div>
+            <div>
+                <h3>Bu görevi bekleyenler</h3>
+                @if (Model.TaskItem.DependentDependencies.Count == 0) { <p>Bu görevi bekleyen iş bulunmuyor.</p> }
+                @foreach (var dependency in Model.TaskItem.DependentDependencies.OrderBy(x => x.DependentTask.Title))
+                {
+                    <a asp-page="Details" asp-route-id="@dependency.DependentTaskId"><i class="bi bi-arrow-right-circle"></i><span>@dependency.DependentTask.Title</span></a>
+                }
+            </div>
+        </div>
+    </section>
+}
+
+
+<!-- ======================================================
+     TASK META
+     ====================================================== -->
+
+<section class="task-meta-strip">
+
+    <div class="task-meta-item">
+
+        <span class="task-meta-icon">
+            <i class="bi bi-folder2"></i>
+        </span>
+
+        <div>
+            <span class="task-meta-label">Proje</span>
+
+            <a asp-page="/Projects/Details"
+               asp-route-id="@Model.TaskItem.ProjectId">
+
+                @(Model.TaskItem.Project?.Name ?? "—")
+
+            </a>
+        </div>
+
+    </div>
+
+
+    <div class="task-meta-item">
+
+        <span class="task-meta-icon">
+            <i class="bi bi-person"></i>
+        </span>
+
+        <div>
+            <span class="task-meta-label">Atanan</span>
+
+            <strong>
+                @(Model.TaskItem.AssignedToUser?.FullName ?? "Atanmamış")
+            </strong>
+        </div>
+
+    </div>
+
+
+    <div class="task-meta-item">
+
+        <span class="task-meta-icon">
+            <i class="bi bi-tag"></i>
+        </span>
+
+        <div>
+            <span class="task-meta-label">Kategori</span>
+
+            <strong>
+                @(Model.TaskItem.Category?.Name ?? "Belirtilmedi")
+            </strong>
+        </div>
+
+    </div>
+
+
+    <div class="task-meta-item @(isOverdue ? "task-meta-overdue" : "")">
+
+        <span class="task-meta-icon">
+            <i class="bi bi-calendar-check"></i>
+        </span>
+
+        <div>
+            <span class="task-meta-label">Son Tarih</span>
+
+            <strong>
+                @(Model.TaskItem.DueDate?.ToString("dd.MM.yyyy") ?? "Belirtilmedi")
+            </strong>
+        </div>
+
+    </div>
+
+</section>
+
+
+<nav class="detail-tabs" data-detail-tabs data-detail-tabs-key="task-details" aria-label="Görev detay bölümleri">
+    <button type="button" class="detail-tab is-active" data-detail-tab="overview"><i class="bi bi-grid"></i> Genel Bakış</button>
+    <button type="button" class="detail-tab" data-detail-tab="time"><i class="bi bi-stopwatch"></i> Zaman <span>@FormatMinutes(Model.TotalTrackedMinutes)</span></button>
+    <button type="button" class="detail-tab" data-detail-tab="activity"><i class="bi bi-chat-square-text"></i> Dosyalar ve Yorumlar <span>@(Model.Attachments.Count + Model.Comments.Count)</span></button>
+</nav>
+
+
+<!-- ======================================================
+     TASK INFORMATION
+     ====================================================== -->
+
+<section class="task-detail-grid" data-detail-panel="overview">
+
+    <article class="project-section-card">
+
+        <header class="project-section-header">
+
+            <div>
+
+                <span class="project-section-icon">
+                    <i class="bi bi-info-lg"></i>
+                </span>
+
+                <div>
+                    <h2>Zaman ve Kayıt Bilgileri</h2>
+                    <p>Planlanan ve gerçekleşen görev tarihleri</p>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <div class="task-info-grid">
+
+            <div class="task-info-item">
+                <span>Durum</span>
+
+                <strong>
+                    <span class="project-status-badge @GetTaskBadge(Model.TaskItem.Status)">
+                        @GetTaskStatusText(Model.TaskItem.Status)
+                    </span>
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Oluşturan</span>
+
+                <strong>
+                    @(Model.TaskItem.CreatedByUser?.FullName ?? "—")
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Oluşturulma Tarihi</span>
+
+                <strong>
+                    @Model.TaskItem.CreatedDate.ToString("dd.MM.yyyy")
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Planlanan Başlangıç</span>
+
+                <strong>
+                    @(Model.TaskItem.PlannedStartDate?.ToString("dd.MM.yyyy") ?? "—")
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Planlanan Bitiş</span>
+
+                <strong class="@(isOverdue ? "task-danger-text" : "")">
+
+                    @(Model.TaskItem.DueDate?.ToString("dd.MM.yyyy") ?? "—")
+
+                    @if (isOverdue)
+                    {
+                        <span class="task-inline-overdue">
+                            Gecikmiş
+                        </span>
+                    }
+
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Gerçek Başlangıç</span>
+
+                <strong>
+                    @(Model.TaskItem.ActualStartedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")
+                </strong>
+            </div>
+
+
+            <div class="task-info-item">
+                <span>Tamamlanma Tarihi</span>
+
+                <strong>
+                    @(Model.TaskItem.CompletedAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")
+                </strong>
+            </div>
+
+        </div>
+
+    </article>
+
+
+    <!-- TASK DESCRIPTION -->
+
+    <article class="project-section-card task-description-card">
+
+        <header class="project-section-header">
+
+            <div>
+
+                <span class="project-section-icon">
+                    <i class="bi bi-text-left"></i>
+                </span>
+
+                <div>
+                    <h2>Açıklama</h2>
+                    <p>Görevin kapsamı ve detayları</p>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <div class="task-description-body">
+
+            @if (string.IsNullOrWhiteSpace(Model.TaskItem.Description))
+            {
+                <div class="project-inline-empty">
+                    <i class="bi bi-text-paragraph"></i>
+                    Açıklama eklenmemiş
+                </div>
+            }
+            else
+            {
+                <p>@Model.TaskItem.Description</p>
+            }
+
+        </div>
+
+    </article>
+
+</section>
+
+<section class="task-time-panel project-section-card" data-detail-panel="time" hidden>
+    <header class="project-section-header">
+        <div><span class="project-section-icon"><i class="bi bi-stopwatch"></i></span><div><h2>Zaman takibi</h2><p>Görev için harcanan süreleri kaydedin ve inceleyin.</p></div></div>
+        <strong class="task-time-total">@FormatMinutes(Model.TotalTrackedMinutes)</strong>
+    </header>
+    @if (Model.CanTrackTime)
+    {
+        <div class="task-time-actions">
+            @if (Model.ActiveTimeEntry is null)
+            {
+                <form method="post" asp-page-handler="StartTimer" class="task-time-start">
+                    <input type="text" name="note" maxlength="300" class="form-control" placeholder="Ne üzerinde çalışıyorsunuz? (isteğe bağlı)" />
+                    <button type="submit" class="project-action-button project-action-primary"><i class="bi bi-play-fill"></i> Sayacı başlat</button>
+                </form>
+            }
+            else
+            {
+                <div class="task-time-running"><span><i class="bi bi-record-circle"></i> @Model.ActiveTimeEntry.StartedAt.ToLocalTime().ToString("HH:mm") itibarıyla çalışıyor</span><form method="post" asp-page-handler="StopTimer"><button type="submit" class="project-action-button project-action-primary"><i class="bi bi-stop-fill"></i> Durdur</button></form></div>
+            }
+            <details class="task-time-manual">
+                <summary><i class="bi bi-plus-circle"></i> Elle süre ekle</summary>
+                <form method="post" asp-page-handler="AddTime">
+                    <label>Çalışma tarihi<input type="date" name="workedOn" value="@DateTime.Today.ToString("yyyy-MM-dd")" class="form-control" required /></label>
+                    <label>Dakika<input type="number" name="minutes" min="1" max="1440" class="form-control" required placeholder="60" /></label>
+                    <label>Not<input type="text" name="note" maxlength="300" class="form-control" placeholder="Yapılan çalışma" /></label>
+                    <button type="submit" class="project-action-button project-action-secondary">Süreyi kaydet</button>
+                </form>
+            </details>
+        </div>
+    }
+    @if (Model.TimeEntries.Count == 0)
+    { <div class="project-empty-state project-empty-state-small"><span><i class="bi bi-clock"></i></span><strong>Henüz süre kaydı yok</strong><p>İlk çalışma süresini sayaçla veya elle ekleyebilirsiniz.</p></div> }
+    else
+    {
+        <div class="task-time-list">
+            @foreach (var entry in Model.TimeEntries)
+            {
+                <article class="@(entry.EndedAt is null ? "is-running" : "")">
+                    <span class="report-avatar">@entry.User.FullName[..1].ToUpperInvariant()</span>
+                    <div><strong>@entry.User.FullName</strong><small>@entry.StartedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm") · @(entry.IsManual ? "Elle eklendi" : entry.EndedAt is null ? "Sayaç çalışıyor" : "Sayaç")</small>@if (!string.IsNullOrWhiteSpace(entry.Note)) { <p>@entry.Note</p> }</div>
+                    <strong>@(entry.EndedAt is null ? "Devam ediyor" : FormatMinutes(entry.DurationMinutes ?? 0))</strong>
+                    @if (entry.UserId == Model.CurrentUserId || User.IsInRole("Admin"))
+                    { <form method="post" asp-page-handler="DeleteTime"><input type="hidden" name="entryId" value="@entry.Id" /><button type="submit" class="project-icon-button project-icon-button-danger" aria-label="Zaman kaydını sil" onclick="return confirm('Bu zaman kaydını silmek istediğinizden emin misiniz?');"><i class="bi bi-trash"></i></button></form> }
+                </article>
+            }
+        </div>
+    }
+</section>
+
+
+<!-- ======================================================
+     ATTACHMENTS + COMMENTS
+     ====================================================== -->
+
+<section class="task-secondary-grid" data-detail-panel="activity" hidden>
+
+    <!-- ATTACHMENTS -->
+
+    <article class="project-section-card task-secondary-card">
+
+        <header class="project-section-header">
+
+            <div>
+
+                <span class="project-section-icon">
+                    <i class="bi bi-paperclip"></i>
+                </span>
+
+                <div>
+                    <h2>Ekler</h2>
+                    <p>Göreve ait dosya ve dokümanlar</p>
+                </div>
+
+            </div>
+
+
+            <span class="project-count-badge">
+                @Model.Attachments.Count
+            </span>
+
+        </header>
+
+
+        <div class="project-section-body">
+
+            @if (Model.CanComment) {<form method="post"
+                  asp-page-handler="UploadFile"
+                  enctype="multipart/form-data"
+                  class="task-upload-form">
+
+                <div class="project-upload-input">
+
+                    <span class="project-upload-icon">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                    </span>
+
+
+                    <div class="project-upload-control">
+
+                        <input type="file"
+                               asp-for="UploadedFile" />
+
+                        <small>
+                            Maksimum dosya boyutu: 10 MB
+                        </small>
+
+                    </div>
+
+                </div>
+
+
+                <button type="submit"
+                        class="project-action-button project-action-primary">
+
+                    <i class="bi bi-upload"></i>
+                    Yükle
+
+                </button>
+
+            </form>}
+
+
+            @if (!Model.Attachments.Any())
+            {
+                <div class="project-empty-state project-empty-state-small">
+
+                    <span>
+                        <i class="bi bi-file-earmark"></i>
+                    </span>
+
+                    <strong>Henüz dosya eklenmemiş</strong>
+
+                    <p>
+                        Görevle ilgili dosyaları yukarıdaki alandan yükleyebilirsiniz.
+                    </p>
+
+                </div>
+            }
+            else
+            {
+                <div class="project-attachment-list">
+
+                    @foreach (var file in Model.Attachments)
+                    {
+                        <div class="project-attachment-item">
+
+                            <span class="project-file-icon">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </span>
+
+
+                            <div class="project-file-content">
+
+                                <a href="@file.FilePath"
+                                   target="_blank">
+
+                                    @file.FileName
+
+                                </a>
+
+
+                                <span>
+                                    @(file.FileSize / 1024) KB
+                                    ·
+                                    @(file.UploadedByUser?.FullName ?? "—")
+                                    ·
+                                    @file.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                                </span>
+
+                            </div>
+
+
+                            <div class="project-file-actions">
+
+                                <a href="@file.FilePath"
+                                   target="_blank"
+                                   class="project-icon-button"
+                                   title="Dosyayı aç">
+
+                                    <i class="bi bi-box-arrow-up-right"></i>
+
+                                </a>
+
+
+                                @if ((Model.CanComment && file.UploadedByUserId == Model.CurrentUserId) || User.IsInRole("Admin"))
+                                {
+                                    <form method="post"
+                                          asp-page-handler="DeleteFile"
+                                          asp-route-attachmentId="@file.Id">
+
+                                        <button type="submit"
+                                                class="project-icon-button project-icon-button-danger"
+                                                title="Dosyayı sil"
+                                                onclick="return confirm('Bu dosyayı silmek istediğinizden emin misiniz?');">
+
+                                            <i class="bi bi-trash"></i>
+
+                                        </button>
+
+                                    </form>
+                                }
+
+                            </div>
+
+                        </div>
+                    }
+
+                </div>
+            }
+
+        </div>
+
+    </article>
+
+
+    <!-- COMMENTS -->
+    @if (Model.CanSeeComments)
+    {
+        <article class="project-section-card task-secondary-card">
+
+            <header class="project-section-header">
+
+                <div>
+
+                    <span class="project-section-icon">
+                        <i class="bi bi-chat-left-text"></i>
+                    </span>
+
+                    <div>
+                        <h2>Yorumlar</h2>
+                        <p>Görev üzerindeki görüşmeler ve durum değişiklikleri</p>
+                    </div>
+
+                </div>
+
+
+                <span class="project-count-badge">
+                    @Model.Comments.Count
+                </span>
+
+            </header>
+
+
+            <div class="project-section-body">
+
+                @if (Model.CanComment)
+                {
+                    <form method="post"
+                          asp-page-handler="AddComment"
+                          class="task-comment-form">
+
+
+                        <textarea asp-for="NewComment"
+                                  rows="3"
+                                  placeholder="Göreve bir yorum ekleyin..."></textarea>
+
+
+                        <div class="task-comment-status">
+
+                            <label asp-for="NewTaskStatus">
+                                Yeni Görev Durumu
+                            </label>
+
+
+                            <select asp-for="NewTaskStatus">
+
+                                <option value="">
+                                    -- Durum Seçin --
+                                </option>
+
+                                <option value="ToDo">
+                                    Yapılacak
+                                </option>
+
+                                <option value="InProgress">
+                                    Devam Ediyor
+                                </option>
+
+                                <option value="InReview">
+                                    Gözden Geçiriliyor
+                                </option>
+
+                                <option value="Done">
+                                    Tamamlandı
+                                </option>
+
+                            </select>
+
+                        </div>
+
+
+                        <div class="task-comment-actions">
+
+                            <span>
+                                <i class="bi bi-info-circle"></i>
+                                Yorum ile birlikte görev durumunu güncelleyebilirsiniz.
+                            </span>
+
+
+                            <button type="submit"
+                                    class="project-action-button project-action-primary">
+
+                                <i class="bi bi-send"></i>
+                                Gönder
+
+                            </button>
+
+                        </div>
+
+                    </form>
+                }
+
+
+                @if (!Model.Comments.Any())
+                {
+                    <div class="project-empty-state project-empty-state-small">
+
+                        <span>
+                            <i class="bi bi-chat"></i>
+                        </span>
+
+                        <strong>Henüz yorum yok</strong>
+
+                        <p>
+                            Bu görev için henüz bir görüşme başlatılmamış.
+                        </p>
+
+                    </div>
+                }
+                else
+                {
+                    <div class="task-comment-list">
+
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <article class="task-comment">
+
+                                <span class="project-person-avatar">
+                                    @(comment.User?.FullName?.Substring(0, 1).ToUpper() ?? "—")
+                                </span>
+
+
+                                <div class="task-comment-content">
+
+                                    <header>
+
+                                        <div>
+
+                                            <strong>
+                                                @(comment.User?.FullName ?? "—")
+                                            </strong>
+
+                                            <span>
+                                                @comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+
+                                                @if (comment.UpdatedAt.HasValue)
+                                                {
+                                                    <span> · düzenlenmiş</span>
+                                                }
+                                            </span>
+
+                                        </div>
+
+
+                                        @if ((Model.CanComment && comment.UserId == Model.CurrentUserId) || User.IsInRole("Admin"))
+                                        {
+                                            <form method="post"
+                                                  asp-page-handler="DeleteComment"
+                                                  asp-route-commentId="@comment.Id">
+
+                                                <button type="submit"
+                                                        class="project-icon-button project-icon-button-danger"
+                                                        title="Yorumu sil"
+                                                        onclick="return confirm('Bu yorumu silmek istediğinizden emin misiniz?');">
+
+                                                    <i class="bi bi-trash"></i>
+
+                                                </button>
+
+                                            </form>
+                                        }
+
+                                    </header>
+
+
+                                    @if (comment.NewTaskStatus.HasValue)
+                                    {
+                                        <div class="task-comment-status-change">
+
+                                            <i class="bi bi-arrow-right-circle"></i>
+
+                                            Durum:
+
+                                            <strong>
+                                                @GetTaskStatusText(comment.NewTaskStatus.Value)
+                                            </strong>
+
+                                        </div>
+                                    }
+
+
+                                    <p>
+                                        @comment.Content
+                                    </p>
+
+                                </div>
+
+                            </article>
+                        }
+
+                    </div>
+                }
+
+            </div>
+
+        </article>
+    }
+
+</section>
+
+
+@functions {
+
+    string GetTaskBadge(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "project-status-neutral",
+        TMS.Models.TaskStatus.InProgress => "project-status-info",
+        TMS.Models.TaskStatus.InReview => "project-status-warning",
+        TMS.Models.TaskStatus.Done => "project-status-success",
+        _ => "project-status-neutral"
+    };
+
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done => "Tamamlandı",
+        _ => status.ToString()
+    };
+
+    string GetPriorityText(TMS.Models.TaskPriority priority) => priority switch
+    {
+        TMS.Models.TaskPriority.Low => "Düşük",
+        TMS.Models.TaskPriority.High => "Yüksek",
+        TMS.Models.TaskPriority.Critical => "Kritik",
+        _ => "Normal"
+    };
+
+    string FormatMinutes(int minutes) => minutes < 60 ? $"{minutes} dk" : $"{minutes / 60} sa {minutes % 60} dk";
+
+}

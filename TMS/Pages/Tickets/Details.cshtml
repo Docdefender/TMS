@@ -1,0 +1,158 @@
+@page "{id:int}"
+@model TMS.Pages.Tickets.DetailsModel
+@using TMS.Models
+@using TMS.Services
+@{
+    ViewData["Title"] = "Ticket #" + Model.Item.Id;
+}
+<div class="ticket-page">
+    <header class="ticket-page-header">
+        <div>
+            <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Tickets/Index">Ticket'lar</a><i class="bi bi-chevron-right"></i><strong>TCK-@Model.Item.CreatedAt.Year-@Model.Item.Id.ToString("D6")</strong></nav>
+            <h1><span class="ticket-detail-key">TCK-@Model.Item.CreatedAt.Year-@Model.Item.Id.ToString("D6")</span> @Model.Item.Subject</h1>
+            <p>@Model.Item.Requester.FullName · @Model.Item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</p>
+        </div>
+        <span class="ticket-pill ticket-status-large @TMS.Pages.Tickets.DetailsModel.StatusClass(Model.Item.Status)">@TMS.Pages.Tickets.DetailsModel.StatusText(Model.Item.Status)</span>
+    </header>
+    <div class="ticket-detail-layout">
+        <main class="ticket-stack">
+            <section class="ticket-panel">
+                <div class="ticket-panel-heading"><h2>Yazışma</h2><span>@Model.Messages.Count mesaj</span></div>
+                <div class="ticket-conversation">
+                    @foreach (var message in Model.Messages)
+                    {
+                        var authorName = string.IsNullOrWhiteSpace(message.AuthorUser?.FullName) ? "E-posta" : message.AuthorUser.FullName;
+                        <article class="ticket-message @(message.IsInternal ? "ticket-message-internal" : message.IsIncoming ? "ticket-message-incoming" : "ticket-message-outgoing")">
+                            <div class="ticket-message-avatar" aria-hidden="true">@authorName[..1].ToUpperInvariant()</div>
+                            <div class="ticket-message-content">
+                                <div class="ticket-message-meta">
+                                    <strong>@authorName</strong>
+                                    <span>@(message.IsInternal ? "İç not" : message.IsIncoming ? "Gelen ileti" : "Giden yanıt")</span>
+                                    <time datetime="@message.SentAt.ToString("O")">@message.SentAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</time>
+                                </div>
+                                <p class="ticket-message-body">@message.Body</p>
+                            </div>
+                        </article>
+                    }
+                </div>
+            </section>
+            @if (Model.Rights.Reply)
+            {
+                <form method="post" asp-page-handler="Message" asp-route-id="@Model.Item.Id" class="ticket-panel ticket-reply-composer">
+                    <div class="ticket-panel-heading"><h2><i class="bi bi-reply"></i> Yanıt yaz</h2><span>Ticket konuşmasına eklenir</span></div>
+                    <div class="ticket-panel-body ticket-form">
+                        <div class="ticket-field"><label for="ticketReply" class="sr-only">Yanıt</label><textarea id="ticketReply" name="body" rows="4" required class="form-control" placeholder="Yanıtınızı yazın..."></textarea></div>
+                        <div class="ticket-composer-footer">
+                            @if (Model.Rights.Manage) { <label class="ticket-check"><input type="checkbox" name="isInternal" value="true" /> <span>İç not olarak ekle</span></label> }
+                            <button type="submit" class="project-action-button project-action-primary"><i class="bi bi-send"></i> Yanıtı kaydet</button>
+                        </div>
+                    </div>
+                </form>
+            }
+            <section class="ticket-panel">
+                <div class="ticket-panel-heading"><h2>Dosyalar</h2><span>@Model.Files.Count dosya</span></div>
+                @if (Model.Files.Count == 0) { <div class="ticket-empty ticket-empty-compact"><p>Henüz dosya eklenmedi.</p></div> }
+                @foreach (var file in Model.Files)
+                {
+                    <div class="ticket-file-row">
+                        <div>
+                            <a href="@file.FilePath" class="ticket-text-link"><i class="bi bi-paperclip" aria-hidden="true"></i> @file.FileName</a>
+                            @if (file.IsInternal) { <span class="ticket-pill ticket-pill-warning">İç dosya</span> }
+                            <small>@(file.UploadedByUser?.FullName ?? "—") · @file.UploadedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</small>
+                        </div>
+                        @if (Model.Rights.Manage || file.UploadedByUserId == User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value)
+                        {
+                            <form method="post" asp-page-handler="DeleteFile" asp-route-id="@Model.Item.Id">
+                                <input type="hidden" name="attachmentId" value="@file.Id" />
+                                <button type="submit" class="ticket-text-button ticket-danger-text" aria-label="@file.FileName dosyasını sil">Sil</button>
+                            </form>
+                        }
+                    </div>
+                }
+                @if (Model.Rights.Reply)
+                {
+                    <form method="post" enctype="multipart/form-data" asp-page-handler="Upload" asp-route-id="@Model.Item.Id" class="ticket-panel-body ticket-form ticket-section-divider">
+                        <div class="ticket-field"><label for="ticketFile">Dosya ekle (en fazla 10 MB)</label><input id="ticketFile" type="file" name="file" required class="form-control" /></div>
+                        @if (Model.Rights.Manage) { <label class="ticket-check"><input type="checkbox" name="isInternal" value="true" /> Yalnızca ekip görsün</label> }
+                        <div><button type="submit" class="project-action-button project-action-secondary">Yükle</button></div>
+                    </form>
+                }
+            </section>
+            @if (Model.Rights.Manage && Model.Events.Count > 0)
+            {
+                <details class="ticket-panel ticket-history-disclosure">
+                    <summary><span><i class="bi bi-clock-history" aria-hidden="true"></i> İşlem geçmişi</span><small>@Model.Events.Count kayıt</small></summary>
+                    <ul class="ticket-history">@foreach (var item in Model.Events) { <li><time datetime="@item.OccurredAt.ToString("O")">@item.OccurredAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</time><span>@(item.ActorUser?.FullName ?? "Sistem") · @item.Type @item.Details</span></li> }</ul>
+                </details>
+            }
+        </main>
+        <aside class="ticket-stack">
+            <section class="ticket-panel">
+                <div class="ticket-panel-heading"><h2>Ticket bilgileri</h2></div>
+                <div class="ticket-panel-body ticket-stack">
+                    <dl class="ticket-facts">
+                        <div><dt>Durum</dt><dd>@TMS.Pages.Tickets.DetailsModel.StatusText(Model.Item.Status)</dd></div>
+                        <div><dt>Sorumlu</dt><dd>@(Model.Item.AssignedToUser?.FullName ?? "Atanmamış")</dd></div>
+                        <div><dt>Öncelik</dt><dd>@TMS.Pages.Tickets.DetailsModel.PriorityText(Model.Item.Priority)</dd></div>
+                        <div><dt>SLA hedefi</dt><dd class="@(TicketSla.IsBreached(Model.Item, DateTime.UtcNow) ? "ticket-sla-breached" : "")">@(Model.Item.SlaDueAt?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—")<small>@TicketSla.RemainingText(Model.Item, DateTime.UtcNow)</small></dd></div>
+                    </dl>
+                    @if (Model.Item.LinkedTaskId.HasValue)
+                    {
+                        @if (Model.LinkedTaskDeleted)
+                        { <p class="ticket-note">Bağlı görev #@Model.Item.LinkedTaskId silindi. Bağlantı geçmiş için korunuyor; görev geri yüklenebilir.</p> }
+                        else
+                        { <p class="ticket-note">Geliştirmeye alındı: <a asp-page="/Tasks/Details" asp-route-id="@Model.Item.LinkedTaskId" class="ticket-text-link">Görev #@Model.Item.LinkedTaskId</a></p> }
+                    }
+                    @if (Model.Item.HasNewReply) { <p class="ticket-notice">Yeni yanıt inceleme bekliyor</p> }
+                    @if (Model.Rights.Manage)
+                    {
+                        <div class="ticket-quick-actions">
+                            <form method="post" asp-page-handler="Following" asp-route-id="@Model.Item.Id"><input type="hidden" name="following" value="@(Model.IsFollowing ? "false" : "true")" /><button type="submit" class="ticket-text-button"><i class="bi bi-bookmark@(Model.IsFollowing ? "-fill" : string.Empty)"></i> @(Model.IsFollowing ? "Takipten çıkar" : "Takibe al")</button></form>
+                            @if (Model.Item.HasNewReply) { <form method="post" asp-page-handler="Reviewed" asp-route-id="@Model.Item.Id"><button type="submit" class="ticket-text-button"><i class="bi bi-check2"></i> İncelendi</button></form> }
+                        </div>
+                        <details class="ticket-side-disclosure" open>
+                            <summary><span><i class="bi bi-arrow-repeat"></i> İş akışı</span><i class="bi bi-chevron-down ticket-disclosure-chevron"></i></summary>
+                            <div class="ticket-disclosure-body ticket-form">
+                                <form method="post" asp-page-handler="Assign" asp-route-id="@Model.Item.Id" class="ticket-form">
+                                    <div class="ticket-field"><label for="assignee">Sorumlu ata</label><select id="assignee" name="userId" class="form-select"><option value="">Atanmamış</option>@foreach (var user in Model.Assignees) { <option value="@user.Value" selected="@(user.Value == Model.Item.AssignedToUserId)">@user.Text</option> }</select></div>
+                                    <button type="submit" class="project-action-button project-action-secondary">Atamayı kaydet</button>
+                                </form>
+                                <form method="post" asp-page-handler="Status" asp-route-id="@Model.Item.Id" class="ticket-form ticket-section-divider">
+                                    <div class="ticket-field"><label for="status">Durum</label><select id="status" name="status" class="form-select">@foreach (TicketStatus status in Enum.GetValues<TicketStatus>()) { <option value="@status" selected="@(status == Model.Item.Status)">@TMS.Pages.Tickets.DetailsModel.StatusText(status)</option> }</select></div>
+                                    <button type="submit" class="project-action-button project-action-secondary">Durumu kaydet</button>
+                                </form>
+                                <form method="post" asp-page-handler="Sla" asp-route-id="@Model.Item.Id" class="ticket-form ticket-section-divider">
+                                    <div class="ticket-field"><label for="priority">Öncelik</label><select id="priority" name="priority" class="form-select">@foreach (TicketPriority priority in Enum.GetValues<TicketPriority>()) { <option value="@priority" selected="@(priority == Model.Item.Priority)">@TMS.Pages.Tickets.DetailsModel.PriorityText(priority)</option> }</select></div>
+                                    <div class="ticket-field"><label for="dueAt">SLA çözüm hedefi</label><input id="dueAt" name="dueAt" type="datetime-local" value="@(Model.Item.SlaDueAt?.ToLocalTime().ToString("yyyy-MM-ddTHH:mm"))" class="form-control" /><small>Boş bırakırsanız önceliğin varsayılan süresi uygulanır.</small></div>
+                                    <button type="submit" class="project-action-button project-action-secondary">SLA'yı kaydet</button>
+                                </form>
+                            </div>
+                        </details>
+                        @if (!Model.Item.LinkedTaskId.HasValue && Model.Projects.Count > 0)
+                        {
+                            <details class="ticket-side-disclosure">
+                                <summary><span><i class="bi bi-kanban"></i> Projeye aktar</span><i class="bi bi-chevron-down ticket-disclosure-chevron"></i></summary>
+                                <form method="post" asp-page-handler="CreateTask" asp-route-id="@Model.Item.Id" class="ticket-disclosure-body ticket-form">
+                                    <select name="projectId" asp-items="Model.Projects" required class="form-select" aria-label="Proje"><option value="">Proje seçiniz</option></select>
+                                    <input name="title" value="@Model.Item.Subject" maxlength="200" required class="form-control" aria-label="Görev başlığı" />
+                                    <textarea name="description" maxlength="1000" rows="3" class="form-control" aria-label="Görev açıklaması" placeholder="Görev açıklaması"></textarea>
+                                    <button type="submit" class="project-action-button project-action-secondary">Görev oluştur</button>
+                                </form>
+                            </details>
+                        }
+                    }
+                </div>
+            </section>
+            <details class="ticket-panel ticket-viewers-disclosure">
+                <summary><span><i class="bi bi-people"></i> Görüntüleyiciler</span><small>@Model.Item.Viewers.Count kişi</small></summary>
+                <div class="ticket-panel-body ticket-stack ticket-disclosure-content">
+                    <ul class="ticket-viewers">@foreach (var viewer in Model.Item.Viewers) { <li><span>@viewer.User.FullName</span>@if (Model.Rights.ManageViewers) { <form method="post" asp-page-handler="Viewer" asp-route-id="@Model.Item.Id"><input type="hidden" name="userId" value="@viewer.UserId" /><input type="hidden" name="visible" value="false" /><button type="submit" class="ticket-text-button">Çıkar</button></form> }</li> }</ul>
+                    @if (Model.Rights.ManageViewers)
+                    {
+                        <form method="post" asp-page-handler="Viewer" asp-route-id="@Model.Item.Id" class="ticket-form ticket-section-divider"><input type="hidden" name="visible" value="true" /><div class="ticket-field"><label for="viewer">Kişi ekle</label><select id="viewer" name="userId" asp-items="Model.Users" class="form-select"><option value="">Seçiniz</option></select></div><button type="submit" class="project-action-button project-action-secondary">Ekle</button></form>
+                    }
+                </div>
+            </details>
+        </aside>
+    </div>
+</div>

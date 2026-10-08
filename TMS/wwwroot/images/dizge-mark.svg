@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 112" role="img" aria-labelledby="title desc">
+  <title id="title">Dizge</title>
+  <desc id="desc">Geyik boynuzu, hayat ağacı ve devre yollarını birleştiren Dizge işareti</desc>
+  <g fill="none" stroke="#F7F3E8" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+    <path d="M48 104V66M48 72 33 57M48 72l15-15"/>
+    <path d="M33 57 20 46V28M33 57V37L24 28M20 39 10 31V18M20 30l9-9V10"/>
+    <path d="M63 57 76 46V28M63 57V37l9-9M76 39l10-8V18M76 30l-9-9V10"/>
+    <path d="M48 66V43M48 43 38 33V21M48 43l10-10V21M38 26l10-10 10 10"/>
+  </g>
+  <g fill="#F7F3E8">
+    <circle cx="10" cy="18" r="4"/><circle cx="29" cy="10" r="4"/><circle cx="38" cy="21" r="4"/>
+    <circle cx="58" cy="21" r="4"/><circle cx="67" cy="10" r="4"/><circle cx="86" cy="18" r="4"/>
+    <circle cx="48" cy="104" r="4"/>
+  </g>
+  <circle cx="48" cy="16" r="5" fill="#A72E26"/>
+</svg>

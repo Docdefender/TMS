@@ -1,0 +1,39 @@
+@page
+@model ErrorModel
+@{
+    ViewData["Title"] = "Bir Sorun Oluştu";
+}
+
+<section class="system-state-page">
+    <div class="system-state-card">
+        <div class="system-state-visual system-state-visual-danger" aria-hidden="true">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+
+        <nav class="page-breadcrumb page-breadcrumb-centered" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Sistem Hatası</strong></nav>
+
+        <h1>İşlem tamamlanamadı.</h1>
+        <p>
+            Beklenmeyen bir sorun oluştu. Sayfayı yenileyebilir veya kontrol paneline dönerek işlemi yeniden deneyebilirsiniz.
+        </p>
+
+        @if (Model.ShowRequestId)
+        {
+            <div class="system-state-reference">
+                <span>Destek kodu</span>
+                <code>@Model.RequestId</code>
+            </div>
+        }
+
+        <div class="system-state-actions">
+            <button type="button" class="project-action-button project-action-secondary" onclick="location.reload()">
+                <i class="bi bi-arrow-clockwise"></i>
+                Sayfayı Yenile
+            </button>
+            <a asp-page="/Index" class="project-action-button project-action-primary">
+                <i class="bi bi-grid"></i>
+                Kontrol Paneline Git
+            </a>
+        </div>
+    </div>
+</section>

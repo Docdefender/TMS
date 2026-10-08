@@ -1,0 +1,300 @@
+@model TMS.Models.TaskBoardViewModel
+@{
+    var today = DateTime.Today;
+    var columns = new[]
+    {
+        (Status: TMS.Models.TaskStatus.ToDo, Label: "Yapılacak", Icon: "bi-circle", Tone: "todo"),
+        (Status: TMS.Models.TaskStatus.InProgress, Label: "Devam Ediyor", Icon: "bi-play-circle", Tone: "progress"),
+        (Status: TMS.Models.TaskStatus.InReview, Label: "Gözden Geçiriliyor", Icon: "bi-eye", Tone: "review"),
+        (Status: TMS.Models.TaskStatus.Done, Label: "Tamamlandı", Icon: "bi-check-circle", Tone: "done")
+    };
+    var projects = Model.Tasks.Select(x => x.Project).Where(x => x is not null)
+        .GroupBy(x => x.Id).Select(x => x.First()).OrderBy(x => x.Name).ToList();
+    var assignees = Model.Tasks.Select(x => x.AssignedToUser).Where(x => x is not null)
+        .GroupBy(x => x!.Id).Select(x => x.First()!).OrderBy(x => x.FullName).ToList();
+    var labels = Model.Tasks.SelectMany(x => x.Labels).Select(x => x.TaskLabel)
+        .GroupBy(x => x.Id).Select(x => x.First()).OrderBy(x => x.Name).ToList();
+}
+
+<section class="task-board-shell"
+         data-task-board="@Model.BoardKey"
+         data-update-url="@Model.UpdateUrl"
+         data-today="@today.ToString("yyyy-MM-dd")">
+    @if (Model.ShowToolbar)
+    {
+        <div class="task-board-toolbar" aria-label="Board filtreleri">
+            <label class="task-board-search">
+                <i class="bi bi-search"></i>
+                <span class="sr-only">Görev ara</span>
+                <input type="search" data-board-filter="search" placeholder="Görevlerde ara..." autocomplete="off" />
+            </label>
+
+            @if (Model.ShowProjectFilter)
+            {
+                <label class="task-board-filter">
+                    <i class="bi bi-folder2"></i>
+                    <span class="sr-only">Proje filtresi</span>
+                    <select data-board-filter="project">
+                        <option value="">Tüm projeler</option>
+                        @foreach (var project in projects)
+                        {
+                            <option value="@project.Id">@project.Name</option>
+                        }
+                    </select>
+                </label>
+            }
+
+            <label class="task-board-filter">
+                <i class="bi bi-person"></i>
+                <span class="sr-only">Sorumlu filtresi</span>
+                <select data-board-filter="assignee">
+                    <option value="">Tüm sorumlular</option>
+                    <option value="unassigned">Atanmamış</option>
+                    @foreach (var assignee in assignees)
+                    {
+                        <option value="@assignee.Id">@assignee.FullName</option>
+                    }
+                </select>
+            </label>
+
+            <label class="task-board-filter">
+                <i class="bi bi-flag"></i>
+                <span class="sr-only">Öncelik filtresi</span>
+                <select data-board-filter="priority">
+                    <option value="">Tüm öncelikler</option>
+                    <option value="Critical">Kritik</option>
+                    <option value="High">Yüksek</option>
+                    <option value="Normal">Normal</option>
+                    <option value="Low">Düşük</option>
+                </select>
+            </label>
+
+            @if (labels.Count > 0)
+            {
+                <label class="task-board-filter">
+                    <i class="bi bi-tags"></i>
+                    <span class="sr-only">Etiket filtresi</span>
+                    <select data-board-filter="label">
+                        <option value="">Tüm etiketler</option>
+                        @foreach (var label in labels)
+                        {
+                            <option value="@label.Id">@label.Name</option>
+                        }
+                    </select>
+                </label>
+            }
+
+            <label class="task-board-filter">
+                <i class="bi bi-calendar3"></i>
+                <span class="sr-only">Tarih filtresi</span>
+                <select data-board-filter="due">
+                    <option value="">Tüm tarihler</option>
+                    <option value="overdue">Gecikenler</option>
+                    <option value="week">7 gün içinde</option>
+                    <option value="nodate">Tarihsiz</option>
+                </select>
+            </label>
+
+            <button type="button" class="task-board-clear" data-board-clear hidden>
+                <i class="bi bi-x-lg"></i>
+                Temizle
+            </button>
+
+            <span class="task-board-result" data-board-result>@Model.Tasks.Count görev</span>
+        </div>
+    }
+
+    <p class="task-board-feedback" data-board-feedback role="status" aria-live="polite"></p>
+
+    <div class="task-board" aria-label="Görev board'u">
+        @foreach (var column in columns)
+        {
+            var tasks = Model.Tasks.Where(x => x.Status == column.Status).ToList();
+            <section class="task-board-column task-board-column-@column.Tone">
+                <header class="task-board-column-header">
+                    <div>
+                        <i class="bi @column.Icon"></i>
+                        <h2>@column.Label</h2>
+                        <span data-board-counter="@column.Status">@tasks.Count</span>
+                    </div>
+                </header>
+
+                <div class="task-board-list" data-task-status="@column.Status">
+                    @foreach (var task in tasks)
+                    {
+                        var overdue = task.DueDate.HasValue && task.DueDate.Value.Date < today && task.Status != TMS.Models.TaskStatus.Done;
+                        var dueSoon = !overdue && task.DueDate.HasValue && task.DueDate.Value.Date <= today.AddDays(7) && task.Status != TMS.Models.TaskStatus.Done;
+                        var movable = Model.MovableTaskIds.Contains(task.Id);
+                        var initials = task.AssignedToUser?.FullName?
+                            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                            .Take(2).Select(x => char.ToUpperInvariant(x[0])).ToArray();
+                        var priorityLabel = task.Priority switch
+                        {
+                            TMS.Models.TaskPriority.Low => "Düşük",
+                            TMS.Models.TaskPriority.High => "Yüksek",
+                            TMS.Models.TaskPriority.Critical => "Kritik",
+                            _ => "Normal"
+                        };
+                        var taskLabelText = string.Join(" ", task.Labels.Select(x => x.TaskLabel.Name));
+                        var labelIds = $"|{string.Join('|', task.Labels.Select(x => x.TaskLabelId))}|";
+                        var searchText = $"{task.Title} {task.Project?.Name} {task.AssignedToUser?.FullName} {task.Category?.Name} {taskLabelText} {priorityLabel}";
+
+                        var detailUrl = Url.Page("/Tasks/Details", new { id = task.Id }) ?? $"/Tasks/Details/{task.Id}";
+                        var statusLabel = columns.First(x => x.Status == task.Status).Label;
+                        var labelList = string.Join(" • ", task.Labels.OrderBy(x => x.TaskLabel.Name).Select(x => x.TaskLabel.Name));
+
+                        <article class="task-board-card task-board-priority-@task.Priority.ToString().ToLowerInvariant() task-board-status-@column.Tone @(overdue ? "is-overdue" : "")"
+                                 data-task-id="@task.Id"
+                                 data-status="@task.Status"
+                                 data-status-label="@statusLabel"
+                                 data-project="@task.ProjectId"
+                                 data-project-name="@(task.Project?.Name ?? "Projesiz")"
+                                 data-assignee="@(task.AssignedToUserId ?? "unassigned")"
+                                 data-assignee-name="@(task.AssignedToUser?.FullName ?? "Atanmamış")"
+                                 data-priority="@task.Priority"
+                                 data-priority-label="@priorityLabel"
+                                 data-labels="@labelIds"
+                                 data-label-list="@labelList"
+                                 data-category="@(task.Category?.Name ?? "Kategori yok")"
+                                 data-due="@(task.DueDate?.ToString("yyyy-MM-dd") ?? "")"
+                                 data-due-label="@(task.DueDate?.ToString("dd.MM.yyyy") ?? "Tarih yok")"
+                                 data-title="@task.Title"
+                                 data-description="@(task.Description ?? "Açıklama eklenmemiş.")"
+                                 data-comments="@task.Comments.Count"
+                                 data-attachments="@task.Attachments.Count"
+                                 data-details-url="@detailUrl"
+                                 data-search="@searchText"
+                                 data-can-move="@(movable ? "true" : "false")">
+                            <div class="task-board-card-topline">
+                                <div>
+                                    <span class="task-board-key">TSK-@task.Id.ToString("D5")</span>
+                                    <span class="task-priority task-priority-@task.Priority.ToString().ToLowerInvariant()">
+                                        <i class="bi bi-flag-fill"></i>@priorityLabel
+                                    </span>
+                                </div>
+                                @if (overdue)
+                                {
+                                    <span class="task-board-date-state is-overdue">Gecikmiş</span>
+                                }
+                                else if (dueSoon)
+                                {
+                                    <span class="task-board-date-state is-warning">Yaklaşıyor</span>
+                                }
+                            </div>
+
+                            <button type="button" class="task-board-title" data-board-open-detail>@task.Title</button>
+
+                            @if (Model.ShowProjectFilter && task.Project is not null)
+                            {
+                                <a asp-page="/Projects/Details" asp-route-id="@task.ProjectId" class="task-board-project">
+                                    <i class="bi bi-folder2"></i>
+                                    @task.Project.Name
+                                </a>
+                            }
+
+                            <div class="task-board-card-tags">
+                                @if (task.Category is not null)
+                                {
+                                    <span><i class="bi bi-tag"></i>@task.Category.Name</span>
+                                }
+                                @foreach (var label in task.Labels.OrderBy(x => x.TaskLabel.Name).Take(3))
+                                {
+                                    <span class="task-label-chip" style="--task-label-color:@label.TaskLabel.Color">@label.TaskLabel.Name</span>
+                                }
+                                @if (task.Labels.Count > 3)
+                                {
+                                    <span>+@(task.Labels.Count - 3)</span>
+                                }
+                                @if (!movable)
+                                {
+                                    <span title="Bu görevin durumunu değiştirme yetkiniz yok"><i class="bi bi-lock"></i>Salt okunur</span>
+                                }
+                            </div>
+
+                            <footer class="task-board-card-footer">
+                                <div class="task-board-card-counts">
+                                    @if (task.Comments.Count > 0)
+                                    {
+                                        <span title="Yorum"><i class="bi bi-chat-left-text"></i>@task.Comments.Count</span>
+                                    }
+                                    @if (task.Attachments.Count > 0)
+                                    {
+                                        <span title="Dosya"><i class="bi bi-paperclip"></i>@task.Attachments.Count</span>
+                                    }
+                                    @if (task.DueDate.HasValue)
+                                    {
+                                        <span class="@(overdue ? "is-overdue" : "")"><i class="bi bi-calendar3"></i>@task.DueDate.Value.ToString("dd.MM")</span>
+                                    }
+                                </div>
+
+                                @if (task.AssignedToUser is not null)
+                                {
+                                    <span class="task-board-assignee" title="@task.AssignedToUser.FullName">@(initials is { Length: > 0 } ? new string(initials) : "?")</span>
+                                }
+                                else
+                                {
+                                    <span class="task-board-assignee is-empty" title="Atanmamış"><i class="bi bi-person"></i></span>
+                                }
+                            </footer>
+                        </article>
+                    }
+
+                    <div class="task-board-empty" data-board-empty @(tasks.Count > 0 ? "hidden" : null)>
+                        <i class="bi bi-inbox"></i>
+                        <span>Bu durumda görev yok</span>
+                    </div>
+                </div>
+            </section>
+        }
+    </div>
+
+    <div class="task-board-drawer-layer" data-board-drawer-layer hidden>
+        <button type="button" class="task-board-drawer-backdrop" data-board-drawer-close aria-label="Görev ayrıntılarını kapat"></button>
+        <aside class="task-board-drawer" data-board-drawer aria-hidden="true" aria-labelledby="taskBoardDrawerTitle">
+            <header class="task-board-drawer-header">
+                <div>
+                    <span data-drawer-key>TSK</span>
+                    <span class="task-board-drawer-status" data-drawer-status></span>
+                </div>
+                <button type="button" class="task-board-drawer-close" data-board-drawer-close aria-label="Kapat">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </header>
+
+            <div class="task-board-drawer-body">
+                <div class="task-board-drawer-heading">
+                    <div>
+                        <span class="task-priority" data-drawer-priority></span>
+                        <span class="task-board-date-state" data-drawer-date-state hidden></span>
+                    </div>
+                    <h2 id="taskBoardDrawerTitle" data-drawer-title></h2>
+                    <p data-drawer-project></p>
+                </div>
+
+                <dl class="task-board-drawer-meta">
+                    <div><dt>Sorumlu</dt><dd data-drawer-assignee></dd></div>
+                    <div><dt>Son tarih</dt><dd data-drawer-due></dd></div>
+                    <div><dt>Kategori</dt><dd data-drawer-category></dd></div>
+                    <div><dt>Etiketler</dt><dd data-drawer-labels></dd></div>
+                </dl>
+
+                <section class="task-board-drawer-section">
+                    <h3>Açıklama</h3>
+                    <p data-drawer-description></p>
+                </section>
+
+                <div class="task-board-drawer-activity">
+                    <span><i class="bi bi-chat-left-text"></i><strong data-drawer-comments>0</strong> yorum</span>
+                    <span><i class="bi bi-paperclip"></i><strong data-drawer-attachments>0</strong> dosya</span>
+                </div>
+            </div>
+
+            <footer class="task-board-drawer-footer">
+                <a href="#" class="dashboard-action dashboard-action-primary" data-drawer-details-link>
+                    Görevin tamamını aç
+                    <i class="bi bi-arrow-right"></i>
+                </a>
+            </footer>
+        </aside>
+    </div>
+</section>

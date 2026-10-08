@@ -1,0 +1,46 @@
+@page
+@model TMS.Pages.Account.AccessDeniedModel
+
+@{
+    ViewData["Title"] = "Erişim Reddedildi";
+}
+
+<section class="access-denied-page">
+    <div class="access-denied-card">
+        <div class="access-denied-visual" aria-hidden="true">
+            <div class="access-denied-symbol">
+                <i class="bi bi-shield-lock"></i>
+            </div>
+            <span class="access-denied-node access-denied-node-left"></span>
+            <span class="access-denied-node access-denied-node-right"></span>
+        </div>
+
+        <nav class="page-breadcrumb page-breadcrumb-centered" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Erişim Reddedildi</strong></nav>
+
+        <h1>Bu alana erişim yetkiniz bulunmuyor.</h1>
+        <p>
+            Görüntülemeye çalıştığınız sayfa mevcut hesabınızın yetkileri kapsamında değil.
+        </p>
+
+        <div class="access-denied-note">
+            <i class="bi bi-info-circle"></i>
+            <span>
+                Bu sayfaya erişmeniz gerektiğini düşünüyorsanız sistem yöneticinizle iletişime geçebilirsiniz.
+            </span>
+        </div>
+
+        <div class="access-denied-actions">
+            <button type="button"
+                    class="project-action-button project-action-secondary"
+                    onclick="history.back()">
+                <i class="bi bi-arrow-left"></i>
+                Geri Dön
+            </button>
+
+            <a asp-page="/Index" class="project-action-button project-action-primary">
+                <i class="bi bi-grid"></i>
+                Kontrol Paneline Git
+            </a>
+        </div>
+    </div>
+</section>

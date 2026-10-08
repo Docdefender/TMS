@@ -1,0 +1,93 @@
+@model TMS.Pages.Pipeline.PipelineTaskRow
+@{
+    var taskStatus = Model.Task.Status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done => "Tamamlandı",
+        _ => Model.Task.Status.ToString()
+    };
+    var prerequisites = Model.Task.PrerequisiteDependencies.OrderBy(x => x.PrerequisiteTask.Title).ToList();
+    var waitingCount = prerequisites.Count(x => x.PrerequisiteTask.Status != TMS.Models.TaskStatus.Done);
+}
+<div class="pipeline-task @(waitingCount > 0 ? "is-dependency-blocked" : "")">
+    <div class="pipeline-grow">
+        <a asp-page="/Tasks/Details" asp-route-id="@Model.Task.Id" class="pipeline-task-title">@Model.Task.Title</a>
+        <div class="pipeline-task-meta">@taskStatus · @(Model.Task.AssignedToUser?.FullName ?? "Atanmamış")</div>
+        @if (waitingCount > 0)
+        {
+            <div class="pipeline-task-blocked"><i class="bi bi-lock"></i> @waitingCount ön koşul tamamlanmayı bekliyor</div>
+        }
+    </div>
+    @if (Model.Pipeline.CanManage)
+    {
+        <form method="post" asp-page="/Pipeline/Details" asp-page-handler="AssignTask" asp-route-id="@Model.Pipeline.Project.Id" asp-route-taskId="@Model.Task.Id" class="pipeline-task-form">
+            <select name="stageId" aria-label="Aşama">
+                <option value="">Aşama bekliyor</option>
+                @foreach (var stage in Model.Pipeline.Stages)
+                {
+                    <option value="@stage.Id" selected="@(stage.Id == Model.CurrentStageId)">@stage.Name</option>
+                }
+            </select>
+            <select name="checkpointId" aria-label="Checkpoint">
+                <option value="">Checkpoint yok</option>
+                @foreach (var stage in Model.Pipeline.Stages.Where(x => x.Checkpoints.Count > 0))
+                {
+                    <optgroup label="@stage.Name">
+                        @foreach (var checkpoint in stage.Checkpoints.OrderBy(x => x.SortOrder))
+                        {
+                            <option value="@checkpoint.Id" data-stage-id="@stage.Id" selected="@(checkpoint.Id == Model.Task.PipelineCheckpointId)">@checkpoint.Name</option>
+                        }
+                    </optgroup>
+                }
+            </select>
+            <button type="submit" title="Konumu kaydet"><i class="bi bi-check-lg"></i></button>
+        </form>
+    }
+    @if (prerequisites.Count > 0 || Model.Pipeline.CanManage)
+    {
+        <details class="pipeline-task-dependencies">
+            <summary><i class="bi bi-link-45deg"></i> Ön koşullar (@prerequisites.Count)</summary>
+            @if (prerequisites.Count > 0)
+            {
+                <div class="pipeline-dependency-list">
+                    @foreach (var dependency in prerequisites)
+                    {
+                        var complete = dependency.PrerequisiteTask.Status == TMS.Models.TaskStatus.Done;
+                        <div class="pipeline-dependency-item">
+                            <i class="bi @(complete ? "bi-check-circle-fill" : "bi-hourglass-split")"></i>
+                            <a asp-page="/Tasks/Details" asp-route-id="@dependency.PrerequisiteTaskId">@dependency.PrerequisiteTask.Title</a>
+                            <span>@(complete ? "Tamamlandı" : "Bekleniyor")</span>
+                            @if (Model.Pipeline.CanManage)
+                            {
+                                <form method="post" asp-page="/Pipeline/Details" asp-page-handler="RemoveTaskDependency"
+                                      asp-route-id="@Model.Pipeline.Project.Id" asp-route-dependencyId="@dependency.Id">
+                                    <button type="submit" title="Ön koşulu kaldır" aria-label="@dependency.PrerequisiteTask.Title ön koşulunu kaldır"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            @if (Model.Pipeline.CanManage)
+            {
+                var candidates = Model.Pipeline.AllTasks.Where(x => x.Id != Model.Task.Id
+                    && prerequisites.All(d => d.PrerequisiteTaskId != x.Id)).ToList();
+                @if (candidates.Count > 0)
+                {
+                    <form method="post" asp-page="/Pipeline/Details" asp-page-handler="AddTaskDependency"
+                          asp-route-id="@Model.Pipeline.Project.Id" asp-route-taskId="@Model.Task.Id" class="pipeline-dependency-add">
+                        <select name="prerequisiteTaskId" aria-label="@Model.Task.Title için ön koşul görevi">
+                            @foreach (var candidate in candidates)
+                            {
+                                <option value="@candidate.Id">@candidate.Title</option>
+                            }
+                        </select>
+                        <button type="submit"><i class="bi bi-plus-lg"></i> Ön koşul ekle</button>
+                    </form>
+                }
+            }
+        </details>
+    }
+</div>

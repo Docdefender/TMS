@@ -1,0 +1,17 @@
+# Build and IDE output
+bin/
+obj/
+.vs/
+*.user
+*.suo
+
+# Local database files, backups and acceptance-run output
+*.mdf
+*.ldf
+.local-backups/
+.local-runtime/
+.local-build/
+
+# Machine-specific configuration and user uploads may contain private data.
+appsettings.Local.json
+wwwroot/uploads/

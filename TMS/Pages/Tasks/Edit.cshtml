@@ -1,0 +1,371 @@
+@page "{id:int}"
+@model TMS.Pages.Tasks.EditModel
+
+@{
+    ViewData["Title"] = "Görevi Düzenle";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="form-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Tasks/Index">Görevler</a><i class="bi bi-chevron-right"></i><a asp-page="/Tasks/Details" asp-route-id="@Model.TaskItem.Id">TSK-@Model.TaskItem.Id.ToString("D5")</a><i class="bi bi-chevron-right"></i><strong>Düzenle</strong></nav>
+
+
+        <h1 class="form-page-title">
+            @Model.TaskItem.Title
+        </h1>
+
+
+        <p class="form-page-description">
+            Görevin içeriğini, durumunu, sorumlusunu ve tamamlanma planını güncelleyin.
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     FORM
+     ====================================================== -->
+
+<form method="post"
+      class="dizge-form workspace-form">
+
+    <div asp-validation-summary="ModelOnly"
+         class="form-validation-summary">
+    </div>
+
+
+    <div class="task-form-grid">
+
+
+        <!-- ==================================================
+             TASK INFORMATION
+             ================================================== -->
+
+        <section class="project-section-card" data-step="1">
+
+            <header class="project-section-header">
+
+                <div>
+
+                    <span class="project-section-icon">
+                        <i class="bi bi-list-check"></i>
+                    </span>
+
+
+                    <div>
+                        <h2>Görev Bilgileri</h2>
+                        <p>Görevin başlığı ve kapsamı</p>
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <div class="form-section-body">
+
+
+                <!-- Title -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.Title">
+                        Görev Başlığı
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <input asp-for="TaskItem.Title"
+                           class="form-control"
+                           placeholder="Görev başlığını girin" />
+
+
+                    <span asp-validation-for="TaskItem.Title"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.Description">
+                        Açıklama
+                    </label>
+
+
+                    <textarea asp-for="TaskItem.Description"
+                              class="form-control form-textarea task-form-description"
+                              rows="5"
+                              placeholder="Görevin yapılacaklarını, kapsamını ve önemli detaylarını yazın..."></textarea>
+
+
+                    <span asp-validation-for="TaskItem.Description"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================================
+             PLANNING & RESPONSIBILITY
+             ================================================== -->
+
+        <section class="project-section-card" data-step="2">
+
+            <header class="project-section-header">
+
+                <div>
+
+                    <span class="project-section-icon">
+                        <i class="bi bi-calendar2-check"></i>
+                    </span>
+
+
+                    <div>
+                        <h2>Planlama ve Sorumluluk</h2>
+                        <p>Durum, sorumlu, kategori ve son tarih</p>
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <div class="form-section-body">
+
+
+                <!-- Status -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.Status">
+                        Görev Durumu
+                    </label>
+
+
+                    <div class="form-select-wrapper">
+
+                        <i class="bi bi-circle-half"></i>
+
+
+                        <select asp-for="TaskItem.Status"
+                                class="form-control form-select">
+
+                            <option value="ToDo">
+                                Yapılacak
+                            </option>
+
+                            <option value="InProgress">
+                                Devam Ediyor
+                            </option>
+
+                            <option value="InReview">
+                                Gözden Geçiriliyor
+                            </option>
+
+                            <option value="Done">
+                                Tamamlandı
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <span asp-validation-for="TaskItem.Status"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Priority -->
+
+                <div class="form-field">
+                    <label asp-for="TaskItem.Priority">Öncelik</label>
+                    <div class="form-select-wrapper">
+                        <i class="bi bi-flag"></i>
+                        <select asp-for="TaskItem.Priority" class="form-control form-select">
+                            <option value="Low">Düşük</option>
+                            <option value="Normal">Normal</option>
+                            <option value="High">Yüksek</option>
+                            <option value="Critical">Kritik</option>
+                        </select>
+                    </div>
+                </div>
+
+
+                <!-- Planned Start -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.PlannedStartDate">
+                        Planlanan Başlangıç
+                    </label>
+
+                    <div class="form-input-icon">
+                        <i class="bi bi-calendar-plus"></i>
+                        <input asp-for="TaskItem.PlannedStartDate"
+                               type="date"
+                               class="form-control" />
+                    </div>
+
+                    <span asp-validation-for="TaskItem.PlannedStartDate"
+                          class="form-validation-message"></span>
+
+                </div>
+
+
+                <!-- Due Date -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.DueDate">
+                        Planlanan Bitiş
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-calendar-event"></i>
+
+
+                        <input asp-for="TaskItem.DueDate"
+                               type="date"
+                               class="form-control" />
+
+                    </div>
+
+
+                    <span asp-validation-for="TaskItem.DueDate"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Assignee -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.AssignedToUserId">
+                        Atanan
+                    </label>
+
+
+                    <div class="form-select-wrapper">
+
+                        <i class="bi bi-person"></i>
+
+
+                        <select asp-for="TaskItem.AssignedToUserId"
+                                asp-items="Model.UserList"
+                                class="form-control form-select">
+
+                            <option value="">
+                                — Atanmamış —
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Category -->
+
+                <div class="form-field">
+
+                    <label asp-for="TaskItem.CategoryId">
+                        Kategori
+                    </label>
+
+
+                    <div class="form-select-wrapper">
+
+                        <i class="bi bi-tag"></i>
+
+
+                        <select asp-for="TaskItem.CategoryId"
+                                asp-items="Model.CategoryList"
+                                class="form-control form-select">
+
+                            <option value="">
+                                — Kategori Seçin —
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Labels -->
+
+                <div class="form-field">
+                    <label asp-for="LabelText">Etiketler</label>
+                    <div class="form-input-icon">
+                        <i class="bi bi-tags"></i>
+                        <input asp-for="LabelText" class="form-control" maxlength="300"
+                               placeholder="Örn. backend, müşteri, acil" />
+                    </div>
+                    <small class="form-field-help">Etiketleri virgülle ayırın. En fazla 8 etiket.</small>
+                    <span asp-validation-for="LabelText" class="form-validation-message"></span>
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <!-- ======================================================
+         ACTIONS
+         ====================================================== -->
+
+    <div class="form-actions">
+
+        <a asp-page="Details"
+           asp-route-id="@Model.TaskItem.Id"
+           class="project-action-button project-action-secondary">
+
+            İptal
+
+        </a>
+
+
+        <button type="submit"
+                class="project-action-button project-action-primary">
+
+            <i class="bi bi-check-lg"></i>
+            Değişiklikleri Kaydet
+
+        </button>
+
+    </div>
+
+</form>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

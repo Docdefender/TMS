@@ -1,0 +1,450 @@
+﻿@page
+@model TMS.Pages.Admin.AuditLogsModel
+
+@{
+    ViewData["Title"] = "Denetim Kayıtları";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="admin-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><span>Yönetim</span><i class="bi bi-chevron-right"></i><strong>Denetim Kayıtları</strong></nav>
+
+        <h1 class="admin-page-title">
+            Denetim Kayıtları
+        </h1>
+
+        <p class="admin-page-description">
+            Sistem üzerinde gerçekleştirilen kullanıcı ve veri işlemlerinin geçmişini inceleyin.
+        </p>
+
+    </div>
+
+
+    <div class="admin-header-summary">
+
+        <span>@(Model.HasFilters ? "Eşleşen Kayıt" : "Toplam Kayıt")</span>
+
+        <strong>
+            @Model.TotalCount
+        </strong>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     AUDIT LOGS
+     ====================================================== -->
+
+<section class="admin-section-card audit-section">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-journal-text"></i>
+            </span>
+
+            <div>
+                <h2>İşlem Geçmişi</h2>
+                <p>Sistem üzerinde kaydedilen denetim hareketleri</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.TotalCount > 0)
+        {
+            <span class="admin-section-count">
+                @Model.StartItem–@Model.EndItem / @Model.TotalCount
+            </span>
+        }
+
+    </header>
+
+    <form method="get" class="audit-filter-bar">
+        <label class="audit-filter-search">
+            <span class="sr-only">Denetim kayıtlarında ara</span>
+            <i class="bi bi-search"></i>
+            <input asp-for="Search" class="form-control" placeholder="İşlem, kullanıcı veya detay ara..." />
+        </label>
+
+        <label>
+            <span class="sr-only">İşlem türü</span>
+            <select asp-for="Action" class="form-control form-select">
+                <option value="">Tüm işlemler</option>
+                @foreach (var action in Model.ActionOptions)
+                {
+                    <option value="@action">@GetActionText(action)</option>
+                }
+            </select>
+        </label>
+
+        <label>
+            <span class="sr-only">Varlık türü</span>
+            <select asp-for="EntityType" class="form-control form-select">
+                <option value="">Tüm varlıklar</option>
+                @foreach (var entity in Model.EntityOptions)
+                {
+                    <option value="@entity">@GetEntityText(entity)</option>
+                }
+            </select>
+        </label>
+
+        <button type="submit" class="project-action-button project-action-primary">
+            <i class="bi bi-funnel"></i>
+            Uygula
+        </button>
+
+        @if (Model.HasFilters)
+        {
+            <a asp-page="AuditLogs" class="project-action-button project-action-secondary">Temizle</a>
+        }
+    </form>
+
+
+    @if (!Model.Logs.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-journal-x"></i>
+            </span>
+
+            <h3>@(Model.HasFilters ? "Eşleşen kayıt bulunamadı" : "Henüz denetim kaydı yok")</h3>
+
+            <p>
+                @(Model.HasFilters
+                    ? "Arama veya filtre ölçütlerini değiştirerek yeniden deneyin."
+                    : "Sistem üzerinde işlemler gerçekleştirildikçe kayıtlar burada görüntülenecek.")
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table audit-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Zaman</th>
+                        <th>İşlem</th>
+                        <th>Varlık</th>
+                        <th>Kayıt</th>
+                        <th>Kullanıcı</th>
+                        <th>Detaylar</th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var log in Model.Logs)
+                    {
+                        <tr>
+
+                            <!-- Time -->
+
+                            <td>
+
+                                <div class="audit-time">
+
+                                    <span class="audit-time-icon">
+                                        <i class="bi bi-clock"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>
+                                            @log.Timestamp.ToString("dd.MM.yyyy")
+                                        </strong>
+
+                                        <span>
+                                            @log.Timestamp.ToString("HH:mm")
+                                        </span>
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Action -->
+
+                            <td>
+
+                                <span class="audit-action @GetActionClass(log.Action)">
+
+                                    <i class="bi @GetActionIcon(log.Action)"></i>
+
+                                    @GetActionText(log.Action)
+
+                                </span>
+
+                            </td>
+
+
+                            <!-- Entity -->
+
+                            <td>
+
+                                <div class="audit-entity">
+
+                                    <span class="audit-entity-icon">
+                                        <i class="bi @GetEntityIcon(log.EntityType)"></i>
+                                    </span>
+
+                                    <span>
+                                        @GetEntityText(log.EntityType)
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Entity ID -->
+
+                            <td>
+
+                                <span class="audit-id">
+                                    #@log.EntityId
+                                </span>
+
+                            </td>
+
+
+                            <!-- User -->
+
+                            <td>
+
+                                <div class="audit-user">
+
+                                    <span class="audit-user-avatar">
+
+                                        @(string.IsNullOrWhiteSpace(log.User?.FullName)
+                                                                        ? "?"
+                                                                        : log.User!.FullName.Substring(0, 1).ToUpper())
+
+                            </span>
+
+
+                                    <div class="audit-user-info">
+
+                                        <strong>
+                                            @(log.User?.FullName ?? "Bilinmeyen Kullanıcı")
+                                        </strong>
+
+
+                                @if (!string.IsNullOrWhiteSpace(log.UserId))
+                                        {
+                                            <span>
+                                                @log.UserId
+                                            </span>
+                                        }
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Details -->
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(log.Details))
+                                {
+                                    <span class="audit-details"
+                                          title="@log.Details">
+
+                                        @log.Details
+
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Detay yok
+                                    </span>
+                                }
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        @if (Model.PageCount > 1)
+        {
+            <nav class="audit-pagination" aria-label="Denetim kayıtları sayfaları">
+                <span>@Model.StartItem–@Model.EndItem arası gösteriliyor</span>
+                <div>
+                    <a asp-page="AuditLogs"
+                       asp-route-Search="@Model.Search"
+                       asp-route-Action="@Model.Action"
+                       asp-route-EntityType="@Model.EntityType"
+                       asp-route-PageNumber="@(Model.PageNumber - 1)"
+                       class="project-action-button project-action-secondary @(Model.PageNumber == 1 ? "is-disabled" : null)"
+                       aria-disabled="@(Model.PageNumber == 1 ? "true" : "false")">
+                        <i class="bi bi-chevron-left"></i>
+                        Önceki
+                    </a>
+
+                    <strong>@Model.PageNumber / @Model.PageCount</strong>
+
+                    <a asp-page="AuditLogs"
+                       asp-route-Search="@Model.Search"
+                       asp-route-Action="@Model.Action"
+                       asp-route-EntityType="@Model.EntityType"
+                       asp-route-PageNumber="@(Model.PageNumber + 1)"
+                       class="project-action-button project-action-secondary @(Model.PageNumber == Model.PageCount ? "is-disabled" : null)"
+                       aria-disabled="@(Model.PageNumber == Model.PageCount ? "true" : "false")">
+                        Sonraki
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </nav>
+        }
+    }
+
+</section>
+
+
+@functions {
+
+    string GetActionClass(string action) => action switch
+    {
+        "Created" => "audit-action-created",
+        "Updated" => "audit-action-updated",
+        "ChangePassword" => "audit-action-updated",
+        "Deleted" => "audit-action-deleted",
+        "SoftDelete" => "audit-action-deleted",
+        "Restored" => "audit-action-restored",
+        "StatusChanged" => "audit-action-status",
+        "Login" => "audit-action-login",
+        "Logout" => "audit-action-logout",
+        "Register" => "audit-action-register",
+        "FileUploaded" => "audit-action-file",
+        "FileDeleted" => "audit-action-deleted",
+        "PipelineStageDeleted" or "PipelineCheckpointDeleted" or "ProjectRelationRemoved" or "TaskDependencyRemoved" => "audit-action-deleted",
+        "PipelineStageCreated" or "PipelineCheckpointCreated" or "ProjectRelationCreated" or "TaskDependencyCreated" => "audit-action-created",
+        "PipelineStageUpdated" or "PipelineCheckpointUpdated" or "PipelineStageMoved" or "PipelineCheckpointMoved" or "PipelineTaskAssigned" or "PipelineCheckpointApproved" or "TaskScheduleChanged" or "ProjectDependencyCheckpointChanged" => "audit-action-updated",
+        _ => "audit-action-default"
+    };
+
+
+    string GetActionIcon(string action) => action switch
+    {
+        "Created" => "bi-plus-circle",
+        "Updated" => "bi-pencil",
+        "ChangePassword" => "bi-key",
+        "Deleted" => "bi-trash",
+        "SoftDelete" => "bi-trash",
+        "Restored" => "bi-arrow-counterclockwise",
+        "StatusChanged" => "bi-arrow-left-right",
+        "Login" => "bi-box-arrow-in-right",
+        "Logout" => "bi-box-arrow-left",
+        "Register" => "bi-person-plus",
+        "FileUploaded" => "bi-paperclip",
+        "FileDeleted" => "bi-file-earmark-x",
+        "PipelineStageCreated" or "PipelineCheckpointCreated" or "ProjectRelationCreated" or "TaskDependencyCreated" => "bi-plus-circle",
+        "PipelineStageUpdated" or "PipelineCheckpointUpdated" or "TaskScheduleChanged" => "bi-pencil",
+        "PipelineStageMoved" or "PipelineCheckpointMoved" or "PipelineTaskAssigned" => "bi-arrow-down-up",
+        "ProjectDependencyCheckpointChanged" => "bi-signpost-split",
+        "PipelineCheckpointApproved" => "bi-check-circle",
+        "PipelineStageDeleted" or "PipelineCheckpointDeleted" or "ProjectRelationRemoved" or "TaskDependencyRemoved" => "bi-trash",
+        _ => "bi-dot"
+    };
+
+
+    string GetActionText(string action) => action switch
+    {
+        "Created" => "Oluşturuldu",
+        "Updated" => "Güncellendi",
+        "ChangePassword" => "Şifre Değiştirildi",
+        "Deleted" => "Silindi",
+        "SoftDelete" => "Silindi",
+        "Restored" => "Geri Yüklendi",
+        "StatusChanged" => "Durum Değişti",
+        "Login" => "Giriş",
+        "Logout" => "Çıkış",
+        "Register" => "Kayıt",
+        "FileUploaded" => "Dosya Yüklendi",
+        "FileDeleted" => "Dosya Silindi",
+        "SchemaBaseline" => "Şema Başlangıcı",
+        "PipelineStageCreated" => "Pipeline Aşaması Oluşturuldu",
+        "PipelineStageUpdated" => "Pipeline Aşaması Güncellendi",
+        "PipelineStageMoved" => "Pipeline Aşaması Taşındı",
+        "PipelineStageDeleted" => "Pipeline Aşaması Silindi",
+        "PipelineCheckpointCreated" => "Checkpoint Oluşturuldu",
+        "PipelineCheckpointUpdated" => "Checkpoint Güncellendi",
+        "PipelineCheckpointMoved" => "Checkpoint Taşındı",
+        "PipelineCheckpointDeleted" => "Checkpoint Silindi",
+        "PipelineCheckpointApproved" => "Checkpoint Onaylandı",
+        "PipelineTaskAssigned" => "Görev Pipeline Konumu Değişti",
+        "TaskScheduleChanged" => "Görev Takvimi Değişti",
+        "ProjectRelationCreated" => "Proje Bağlantısı Oluşturuldu",
+        "ProjectRelationRemoved" => "Proje Bağlantısı Kaldırıldı",
+        "ProjectDependencyCheckpointChanged" => "Bağımlılık Checkpoint'i Değişti",
+        "TaskDependencyCreated" => "Görev Bağımlılığı Oluşturuldu",
+        "TaskDependencyRemoved" => "Görev Bağımlılığı Kaldırıldı",
+        _ => action
+    };
+
+
+    string GetEntityText(string entity) => entity switch
+    {
+        "Project" => "Proje",
+        "TaskItem" => "Görev",
+        "Comment" => "Yorum",
+        "Department" => "Departman",
+        "Category" => "Kategori",
+        "Attachment" => "Dosya",
+        "User" => "Kullanıcı",
+        "UserProfile" => "Kullanıcı Profili",
+        "PipelineStage" => "Pipeline Aşaması",
+        "PipelineCheckpoint" => "Checkpoint",
+        "ProjectRelation" => "Proje Bağlantısı",
+        "TaskDependency" => "Görev Bağımlılığı",
+        "Database" => "Veritabanı",
+        _ => entity
+    };
+
+
+    string GetEntityIcon(string entity) => entity switch
+    {
+        "Project" => "bi-folder",
+        "TaskItem" => "bi-check2-square",
+        "Comment" => "bi-chat-left-text",
+        "Department" => "bi-building",
+        "Category" => "bi-tag",
+        "Attachment" => "bi-paperclip",
+        "User" => "bi-person",
+        "UserProfile" => "bi-person",
+        "PipelineStage" => "bi-diagram-3",
+        "PipelineCheckpoint" => "bi-diamond",
+        "ProjectRelation" => "bi-link-45deg",
+        "TaskDependency" => "bi-diagram-2",
+        _ => "bi-box"
+    };
+
+}

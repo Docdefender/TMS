@@ -1,0 +1,647 @@
+﻿@page
+@model TMS.Pages.Tasks.IndexModel
+
+@{
+    ViewData["Title"] = "Görevler";
+    var inProgressCount = Model.SummaryTasks.Count(x => x.Status == TMS.Models.TaskStatus.InProgress);
+    var inReviewCount = Model.SummaryTasks.Count(x => x.Status == TMS.Models.TaskStatus.InReview);
+    var overdueCount = Model.SummaryTasks.Count(x => x.DueDate.HasValue
+        && x.DueDate.Value.Date < DateTime.Today
+        && x.Status != TMS.Models.TaskStatus.Done);
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="tasks-page-header">
+
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Görevler</strong></nav>
+
+        <h1 class="tasks-page-title">Görevler</h1>
+
+        <p class="tasks-page-description">
+            Tüm projelerdeki görevleri görüntüleyin, filtreleyin ve iş yükünü takip edin.
+        </p>
+    </div>
+
+    <div class="projects-header-actions">
+        <div class="view-switcher" aria-label="Görev görünümü">
+            <a asp-page="/Tasks/Index" class="is-active"><i class="bi bi-list-ul"></i> Liste</a>
+            <a asp-page="/Kanban/Index"><i class="bi bi-layout-kanban"></i> Board</a>
+        </div>
+        <a asp-page="Create" class="dashboard-action dashboard-action-primary">
+            <i class="bi bi-plus-lg"></i>
+            Yeni Görev
+        </a>
+    </div>
+
+</section>
+
+<section class="tasks-summary-strip" aria-label="Görev özeti">
+    <a asp-page="Index" class="tasks-summary-item @(Model.Statuses.Count == 0 ? "is-active" : string.Empty)">
+        <span class="tasks-summary-icon tasks-summary-icon-all"><i class="bi bi-list-check"></i></span>
+        <span><small>Toplam görev</small><strong>@Model.SummaryTasks.Count</strong></span>
+    </a>
+    <a asp-page="Index" asp-route-Statuses="InProgress" class="tasks-summary-item @(Model.Statuses.Contains("InProgress") ? "is-active" : string.Empty)">
+        <span class="tasks-summary-icon tasks-summary-icon-active"><i class="bi bi-play-circle"></i></span>
+        <span><small>Devam eden</small><strong>@inProgressCount</strong></span>
+    </a>
+    <a asp-page="Index" asp-route-Statuses="InReview" class="tasks-summary-item @(Model.Statuses.Contains("InReview") ? "is-active" : string.Empty)">
+        <span class="tasks-summary-icon tasks-summary-icon-review"><i class="bi bi-eye"></i></span>
+        <span><small>İncelemede</small><strong>@inReviewCount</strong></span>
+    </a>
+    <a asp-page="Index" asp-route-Statuses="overdue" class="tasks-summary-item @(Model.Statuses.Contains("overdue") ? "is-active" : string.Empty)">
+        <span class="tasks-summary-icon tasks-summary-icon-overdue"><i class="bi bi-clock-history"></i></span>
+        <span><small>Gecikmiş</small><strong>@overdueCount</strong></span>
+    </a>
+</section>
+
+
+<!-- ======================================================
+     FILTERS
+     ====================================================== -->
+
+<div class="tasks-workspace">
+<form method="get" id="filterForm" class="tasks-filter-card tasks-workspace-filter">
+
+    <div class="tasks-filter-main">
+
+        <!-- Search -->
+
+        <div class="tasks-search">
+
+            <i class="bi bi-search"></i>
+
+            <input type="text"
+                   name="Search"
+                   value="@Model.Search"
+                   placeholder="Görev ara..." />
+
+        </div>
+
+
+        <details class="compact-filter-more">
+            <summary>
+                <i class="bi bi-sliders"></i>
+                Gelişmiş filtreler
+                @if (Model.StartDate.HasValue || Model.EndDate.HasValue || Model.Statuses.Count > 0)
+                {
+                    <span>@((Model.StartDate.HasValue ? 1 : 0) + (Model.EndDate.HasValue ? 1 : 0) + Model.Statuses.Count)</span>
+                }
+            </summary>
+            <div class="compact-filter-options">
+
+        <!-- Start Date -->
+
+        <div class="tasks-date-filter">
+
+            <i class="bi bi-calendar-event"></i>
+
+            <div>
+                <span>Son Tarih</span>
+
+                <input type="date"
+                       name="StartDate"
+                       value="@Model.StartDate?.ToString("yyyy-MM-dd")"
+                       title="Son tarih başlangıcı" />
+            </div>
+
+        </div>
+
+
+        <!-- End Date -->
+
+        <div class="tasks-date-filter">
+
+            <i class="bi bi-calendar-check"></i>
+
+            <div>
+                <span>Bitiş</span>
+
+                <input type="date"
+                       name="EndDate"
+                       value="@Model.EndDate?.ToString("yyyy-MM-dd")"
+                       title="Son tarih bitişi" />
+            </div>
+
+        </div>
+
+
+        <!-- Status -->
+
+        <div class="tasks-status-filter" id="taskStatusDropdownWrapper">
+
+            <button type="button"
+                    id="taskStatusDropdownBtn"
+                    onclick="toggleTaskStatusDropdown()"
+                    class="tasks-filter-button">
+
+                <i class="bi bi-funnel"></i>
+
+                <span>
+                    @(Model.Statuses.Count > 0
+                                        ? $"{Model.Statuses.Count} durum"
+                                        : "Durum")
+                </span>
+
+                <i class="bi bi-chevron-down tasks-filter-chevron"></i>
+
+            </button>
+
+
+            <div id="taskStatusDropdownMenu"
+                 class="tasks-status-menu hidden">
+
+                <label class="tasks-status-option">
+
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="ToDo"
+                           @(Model.Statuses.Contains("ToDo") ? "checked" : "") />
+
+                    <span class="task-status-dot status-neutral"></span>
+                    <span>Yapılacak</span>
+
+                </label>
+
+
+                <label class="tasks-status-option">
+
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="InProgress"
+                           @(Model.Statuses.Contains("InProgress") ? "checked" : "") />
+
+                    <span class="task-status-dot status-info"></span>
+                    <span>Devam Ediyor</span>
+
+                </label>
+
+
+                <label class="tasks-status-option">
+
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="InReview"
+                           @(Model.Statuses.Contains("InReview") ? "checked" : "") />
+
+                    <span class="task-status-dot status-warning"></span>
+                    <span>Gözden Geçiriliyor</span>
+
+                </label>
+
+
+                <label class="tasks-status-option">
+
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="Done"
+                           @(Model.Statuses.Contains("Done") ? "checked" : "") />
+
+                    <span class="task-status-dot status-success"></span>
+                    <span>Tamamlandı</span>
+
+                </label>
+
+
+                <div class="tasks-status-separator"></div>
+
+
+                <label class="tasks-status-option">
+
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="overdue"
+                           @(Model.Statuses.Contains("overdue") ? "checked" : "") />
+
+                    <span class="task-status-dot status-danger"></span>
+                    <span>Gecikmiş</span>
+
+                </label>
+
+            </div>
+
+        </div>
+
+
+            </div>
+        </details>
+
+        <button type="submit"
+                class="tasks-apply-button">
+
+            Filtrele
+
+        </button>
+
+
+        @if (Model.HasActiveFilter)
+        {
+            <a asp-page="Index"
+               class="tasks-clear-button"
+               title="Filtreleri temizle">
+
+                <i class="bi bi-x-lg"></i>
+                <span class="filter-clear-label">Filtreleri temizle</span>
+
+            </a>
+        }
+
+    </div>
+
+
+    @if (Model.HasActiveFilter)
+    {
+        <div class="tasks-active-filters">
+
+            <span class="tasks-active-label">Aktif filtreler</span>
+
+
+            @if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <span class="tasks-filter-chip">
+                    <i class="bi bi-search"></i>
+                    @Model.Search
+                </span>
+            }
+
+
+            @if (Model.StartDate.HasValue)
+            {
+                <span class="tasks-filter-chip">
+                    <i class="bi bi-calendar-event"></i>
+                    @Model.StartDate.Value.ToString("dd.MM.yyyy") sonrası
+                </span>
+            }
+
+
+            @if (Model.EndDate.HasValue)
+            {
+                <span class="tasks-filter-chip">
+                    <i class="bi bi-calendar-check"></i>
+                    @Model.EndDate.Value.ToString("dd.MM.yyyy") öncesi
+                </span>
+            }
+
+
+            @foreach (var s in Model.Statuses)
+            {
+                var label = s switch
+                {
+                    "ToDo" => "Yapılacak",
+                    "InProgress" => "Devam Ediyor",
+                    "InReview" => "Gözden Geçiriliyor",
+                    "Done" => "Tamamlandı",
+                    "overdue" => "Gecikmiş",
+                    _ => s
+                };
+
+                <span class="tasks-filter-chip">
+                    @label
+                </span>
+            }
+
+        </div>
+    }
+
+</form>
+
+
+<!-- ======================================================
+     TASK LIST
+     ====================================================== -->
+
+<section class="tasks-list-section tasks-workspace-list">
+
+    <header class="tasks-list-header">
+
+        <div>
+            <h2>Görev Listesi</h2>
+
+            <span>
+                @Model.Tasks.Count görev görüntüleniyor
+            </span>
+        </div>
+
+
+        @if (Model.HasActiveFilter)
+        {
+            <span class="tasks-filter-state">
+                <i class="bi bi-funnel-fill"></i>
+                Filtrelenmiş görünüm
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.Tasks.Any())
+    {
+        <div class="tasks-empty-state">
+
+            <div class="tasks-empty-icon">
+                <i class="bi bi-clipboard-check"></i>
+            </div>
+
+
+            @if (Model.HasActiveFilter)
+            {
+                <h3>Filtrelere uygun görev bulunamadı</h3>
+
+                <p>
+                    Arama kriterlerini veya durum filtrelerini değiştirerek tekrar deneyebilirsiniz.
+                </p>
+
+                <a asp-page="Index"
+                   class="dashboard-action dashboard-action-secondary">
+
+                    Filtreleri Temizle
+
+                </a>
+            }
+            else
+            {
+                <h3>Henüz görev bulunmuyor</h3>
+
+                <p>
+                    Görevler projeler üzerinden oluşturulduğunda burada görüntülenecektir.
+                </p>
+
+                <a asp-page="Create"
+                   class="dashboard-action dashboard-action-primary">
+
+                    <i class="bi bi-plus-lg"></i>
+                    Yeni Görev
+
+                </a>
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="tasks-table-scroll">
+
+            <table class="tasks-table">
+
+                <thead>
+                    <tr>
+                        <th>Görev</th>
+                        <th>Proje</th>
+                        <th>Durum</th>
+                        <th>Sorumlu ve tarih</th>
+                        <th class="tasks-actions-column"></th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var task in Model.Tasks)
+                    {
+                        var isOverdue =
+                        task.DueDate.HasValue
+                        && task.DueDate.Value < DateTime.Today
+                        && task.Status != TMS.Models.TaskStatus.Done;
+                        var priorityText = task.Priority switch
+                        {
+                            TMS.Models.TaskPriority.Low => "Düşük",
+                            TMS.Models.TaskPriority.High => "Yüksek",
+                            TMS.Models.TaskPriority.Critical => "Kritik",
+                            _ => "Normal"
+                        };
+
+                        <tr class="@(isOverdue ? "task-row-overdue" : "")">
+
+                            <!-- Task -->
+
+                            <td class="tasks-name-cell">
+
+                                <div class="tasks-name-wrapper">
+
+                                    <span class="tasks-task-icon @(isOverdue ? "tasks-task-icon-danger" : "")">
+                                        <i class="bi bi-check2-square"></i>
+                                    </span>
+
+                                    <div class="tasks-name-content">
+
+                                        <a asp-page="/Tasks/Details"
+                                           asp-route-id="@task.Id"
+                                           class="tasks-name-link"
+                                           data-record-preview-trigger
+                                           data-preview-type="Görev"
+                                           data-preview-key="TSK-@task.Id.ToString("D5")"
+                                           data-preview-title="@task.Title"
+                                           data-preview-status="@GetTaskStatusText(task.Status)"
+                                           data-preview-subtitle="@(task.Project?.Name ?? "Projesiz")"
+                                           data-preview-description="@task.Description"
+                                           data-preview-meta-1-label="Sorumlu"
+                                           data-preview-meta-1-value="@(task.AssignedToUser?.FullName ?? "Atanmamış")"
+                                           data-preview-meta-2-label="Bitiş tarihi"
+                                           data-preview-meta-2-value="@(task.DueDate?.ToString("dd MMM yyyy") ?? "Belirtilmedi")"
+                                           data-preview-meta-3-label="Öncelik"
+                                           data-preview-meta-3-value="@priorityText"
+                                           data-preview-meta-4-label="Kategori"
+                                           data-preview-meta-4-value="@(task.Category?.Name ?? "Kategori yok")"
+                                           data-preview-detail-url="@Url.Page("/Tasks/Details", new { id = task.Id })"
+                                           data-preview-related-url="@Url.Page("/Projects/Details", new { id = task.ProjectId })"
+                                           data-preview-related-key="PRJ-@task.ProjectId.ToString("D4")"
+                                           data-preview-related-title="@(task.Project?.Name ?? "Proje")"
+                                           data-preview-related-subtitle="Bu görevin bağlı olduğu proje">
+
+                                            @task.Title
+
+                                        </a>
+
+                                        @if (isOverdue)
+                                        {
+                                            <span class="tasks-overdue-label">
+                                                <i class="bi bi-exclamation-circle"></i>
+                                                Gecikmiş
+                                            </span>
+                                        }
+
+                                        <div class="tasks-inline-metadata">
+                                            <span class="tasks-key">TSK-@task.Id.ToString("D5")</span>
+                                            <span class="task-priority task-priority-@task.Priority.ToString().ToLowerInvariant()">
+                                                <i class="bi bi-flag-fill"></i>@priorityText
+                                            </span>
+                                            @foreach (var label in task.Labels.OrderBy(x => x.TaskLabel.Name).Take(2))
+                                            {
+                                                <span class="task-label-chip" style="--task-label-color:@label.TaskLabel.Color">@label.TaskLabel.Name</span>
+                                            }
+                                            @if (task.Labels.Count > 2)
+                                            {
+                                                <span class="tasks-more-labels">+@(task.Labels.Count - 2)</span>
+                                            }
+                                            @if (task.Category is not null)
+                                            {
+                                                <span class="tasks-category-meta">@task.Category.Name</span>
+                                            }
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Project -->
+
+                            <td>
+
+                                <a asp-page="/Projects/Details"
+                                   asp-route-id="@task.ProjectId"
+                                   class="tasks-project-link">
+
+                                    <i class="bi bi-folder2"></i>
+
+                                    <span>
+                                        @(task.Project?.Name ?? "—")
+                                    </span>
+
+                                </a>
+
+                            </td>
+
+
+                            <!-- Status -->
+
+                            <td>
+                                <span class="project-status-badge @GetStatusBadge(task.Status)">
+                                    @GetTaskStatusText(task.Status)
+                                </span>
+                            </td>
+
+
+                            <!-- Assignee and due date -->
+
+                            <td class="tasks-owner-cell">
+
+                                @if (task.AssignedToUser is not null)
+                                {
+                                    <div class="tasks-person">
+
+                                        <span class="tasks-person-avatar">
+                                            @(string.IsNullOrWhiteSpace(task.AssignedToUser.FullName)
+                                                                            ? "?"
+                                                                            : task.AssignedToUser.FullName.Substring(0, 1).ToUpper())
+                            </span>
+
+                                        <span>
+                                            @task.AssignedToUser.FullName
+                                        </span>
+
+                                    </div>
+                                                }
+                                else
+                                {
+                                    <span class="tasks-unassigned">
+                                        Atanmamış
+                                    </span>
+                                }
+                                @if (task.DueDate.HasValue)
+                                {
+                                    <div class="tasks-due-date @(isOverdue ? "tasks-due-date-overdue" : "")">
+
+                                        <i class="bi bi-calendar3"></i>
+
+                                        <span>
+                                            @task.DueDate.Value.ToString("dd.MM.yyyy")
+                                        </span>
+
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="tasks-due-date tasks-secondary-cell"><i class="bi bi-calendar3"></i> Tarih yok</span>
+                                }
+
+                            </td>
+
+
+                            <!-- Action -->
+                            <td class="tasks-row-actions">
+
+                                <a asp-page="/Tasks/Details"
+                                   asp-route-id="@task.Id"
+                                   class="tasks-detail-button"
+                                   title="Görev detayları"
+                                   aria-label="@task.Title görev detayları">
+
+                                    <i class="bi bi-arrow-right"></i>
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+</div>
+
+
+@functions {
+
+    string GetStatusBadge(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "project-status-neutral",
+        TMS.Models.TaskStatus.InProgress => "project-status-info",
+        TMS.Models.TaskStatus.InReview => "project-status-warning",
+        TMS.Models.TaskStatus.Done => "project-status-success",
+        _ => "project-status-neutral"
+    };
+
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done => "Tamamlandı",
+        _ => status.ToString()
+    };
+
+}
+
+
+@section Scripts {
+
+    <script>
+
+        function toggleTaskStatusDropdown() {
+            const menu = document.getElementById('taskStatusDropdownMenu');
+            menu.classList.toggle('hidden');
+        }
+
+
+        document.addEventListener('click', function (e) {
+            const wrapper = document.getElementById('taskStatusDropdownWrapper');
+
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('taskStatusDropdownMenu').classList.add('hidden');
+            }
+        });
+
+
+        document.querySelectorAll('#taskStatusDropdownMenu input[type=checkbox]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                document.getElementById('filterForm').submit();
+            });
+        });
+
+    </script>
+
+}

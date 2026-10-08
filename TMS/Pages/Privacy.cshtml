@@ -1,0 +1,54 @@
+@page
+@model PrivacyModel
+@{
+    ViewData["Title"] = "Gizlilik ve Veri Kullanımı";
+}
+
+<section class="admin-page-header privacy-page-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Gizlilik ve Veri Kullanımı</strong></nav>
+        <h1 class="admin-page-title">Gizlilik ve Veri Kullanımı</h1>
+        <p class="admin-page-description">
+            Dizge içinde tutulan kurumsal bilgilerin hangi amaçlarla kullanıldığına ilişkin genel açıklama.
+        </p>
+    </div>
+</section>
+
+<div class="privacy-card-grid">
+    <section class="privacy-info-card">
+        <span class="privacy-info-icon"><i class="bi bi-database-lock"></i></span>
+        <div>
+            <h2>Tutulan bilgiler</h2>
+            <p>Hesap, departman, proje, görev, Ticket, dosya ve işlem geçmişi bilgileri çalışma süreçlerini yürütmek için saklanır.</p>
+        </div>
+    </section>
+
+    <section class="privacy-info-card">
+        <span class="privacy-info-icon"><i class="bi bi-shield-check"></i></span>
+        <div>
+            <h2>Erişim kontrolü</h2>
+            <p>İçerikler kullanıcı rolü, departman sorumluluğu, proje üyeliği ve doğrudan atama kurallarına göre gösterilir.</p>
+        </div>
+    </section>
+
+    <section class="privacy-info-card">
+        <span class="privacy-info-icon"><i class="bi bi-clock-history"></i></span>
+        <div>
+            <h2>İşlem geçmişi</h2>
+            <p>Yetkili işlemler güvenlik, izlenebilirlik ve süreç takibi amacıyla denetim günlüğüne kaydedilebilir.</p>
+        </div>
+    </section>
+
+    <section class="privacy-info-card">
+        <span class="privacy-info-icon"><i class="bi bi-person-lock"></i></span>
+        <div>
+            <h2>Hesap güvenliği</h2>
+            <p>Giriş bilgilerinizi paylaşmayın. Erişim veya hesap bilgilerinizle ilgili bir sorun olduğunda sistem yöneticisine başvurun.</p>
+        </div>
+    </section>
+</div>
+
+<section class="privacy-notice">
+    <i class="bi bi-info-circle"></i>
+    <p>Bu ekran ürün içi genel bilgilendirmedir. Kurumun resmî bilgi güvenliği ve kişisel veri politikaları ayrıca geçerlidir.</p>
+</section>

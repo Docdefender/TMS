@@ -1,0 +1,63 @@
+@page
+@model TMS.Pages.Pipeline.IndexModel
+@{
+    ViewData["Title"] = "Proje Pipeline";
+}
+
+<section class="kanban-page-header project-kanban-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><strong>Pipeline</strong></nav>
+        <h1 class="kanban-page-title">Projeler</h1>
+        <p class="kanban-page-description">Proje aşamalarını, görev ilerlemesini ve checkpoint durumlarını izleyin.</p>
+    </div>
+    <div class="kanban-page-actions">
+        <div class="view-switcher" aria-label="Proje görünümü">
+            <a asp-page="/Projects/Index"><i class="bi bi-list-ul"></i> Liste</a>
+            <a asp-page="/Kanban/Projects"><i class="bi bi-kanban"></i> Kanban</a>
+            <a asp-page="/Pipeline/Index" class="is-active"><i class="bi bi-diagram-3"></i> Pipeline</a>
+        </div>
+        <div class="kanban-page-summary">
+            <div class="kanban-summary-item"><span>Görünen Proje</span><strong>@Model.Projects.Count</strong></div>
+        </div>
+    </div>
+</section>
+
+<div class="pipeline-project-grid">
+    @foreach (var item in Model.Projects)
+    {
+        var projectStatus = item.Project.Status switch
+        {
+            TMS.Models.ProjectStatus.NotStarted => "Başlamadı",
+            TMS.Models.ProjectStatus.InProgress => "Devam Ediyor",
+            TMS.Models.ProjectStatus.Completed => "Tamamlandı",
+            TMS.Models.ProjectStatus.OnHold => "Beklemede",
+            TMS.Models.ProjectStatus.Cancelled => "İptal Edildi",
+            _ => item.Project.Status.ToString()
+        };
+        <article class="pipeline-project-card">
+            <div class="pipeline-project-card-head">
+                <div>
+                    <span class="project-status-badge project-status-neutral">@projectStatus</span>
+                    <h2>@item.Project.Name</h2>
+                </div>
+                <strong class="pipeline-progress-number">%@item.Progress</strong>
+            </div>
+            <p>@(item.Project.Description ?? "Açıklama eklenmemiş.")</p>
+            <div class="pipeline-progress-track"><span style="width:@item.Progress%"></span></div>
+            <div class="pipeline-card-stats">
+                <span><i class="bi bi-list-task"></i> @item.DoneTaskCount / @item.TaskCount görev</span>
+                <span><i class="bi bi-signpost-split"></i> @item.StageCount aşama</span>
+                <span><i class="bi bi-check2-circle"></i> @item.CompletedCheckpointCount / @item.CheckpointCount checkpoint</span>
+            </div>
+            <div class="pipeline-project-card-foot">
+                <span>@(item.Project.Department?.Name ?? "Departman yok") · @(item.Project.Manager?.FullName ?? "Sorumlu yok")</span>
+                <a asp-page="Details" asp-route-id="@item.Project.Id">Pipeline'ı aç <i class="bi bi-arrow-right"></i></a>
+            </div>
+        </article>
+    }
+</div>
+
+@if (Model.Projects.Count == 0)
+{
+    <div class="pipeline-empty"><i class="bi bi-diagram-3"></i><strong>Görüntülenebilecek proje yok</strong></div>
+}

@@ -1,0 +1,420 @@
+﻿@page
+@model TMS.Pages.Account.ProfileModel
+
+@{
+    ViewData["Title"] = "Profilim";
+
+    var initials =
+        !string.IsNullOrWhiteSpace(Model.CurrentUser?.FullName)
+            ? Model.CurrentUser.FullName.Substring(
+                0,
+                Math.Min(2, Model.CurrentUser.FullName.Length)
+              ).ToUpper()
+            : "—";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="profile-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Profilim</strong></nav>
+
+        <h1 class="profile-page-title">
+            Profilim
+        </h1>
+
+        <p class="profile-page-description">
+            Hesap bilgilerinizi görüntüleyin, görünen adınızı güncelleyin ve şifrenizi yönetin.
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     STATUS MESSAGE
+     ====================================================== -->
+@if (!string.IsNullOrEmpty(Model.StatusMessage))
+{
+    var isError =
+        Model.StatusMessage.Contains("hata", StringComparison.OrdinalIgnoreCase);
+
+
+    <div class="admin-feedback @(isError ? "admin-feedback-danger" : "admin-feedback-success")">
+
+        <span>
+            <i class="bi @(isError ? "bi-exclamation-triangle" : "bi-check-circle")"></i>
+        </span>
+
+        <p>
+            @Model.StatusMessage
+        </p>
+
+    </div>
+}
+
+
+<!-- ======================================================
+     PROFILE OVERVIEW
+     ====================================================== -->
+
+<section class="profile-overview-card">
+
+    <div class="profile-overview-main">
+
+        <span class="profile-avatar">
+            @if (!string.IsNullOrWhiteSpace(Model.CurrentUser?.ProfileImagePath))
+            {
+                <img src="@Model.CurrentUser.ProfileImagePath" alt="@(Model.CurrentUser.FullName)" />
+            }
+            else
+            {
+                @initials
+            }
+        </span>
+
+
+        <div class="profile-overview-identity">
+
+            <h2>
+                @(Model.CurrentUser?.FullName ?? "Kullanıcı")
+            </h2>
+
+            <span>
+                @(Model.CurrentUser?.Email ?? "—")
+            </span>
+
+        </div>
+
+    </div>
+
+
+    <div class="profile-overview-meta">
+
+        <div class="profile-meta-item">
+
+            <span class="profile-meta-icon">
+                <i class="bi bi-shield-check"></i>
+            </span>
+
+            <div>
+                <small>Rol</small>
+
+                <strong>
+                    @Model.UserRole
+                </strong>
+            </div>
+
+        </div>
+
+
+        <div class="profile-meta-item">
+
+            <span class="profile-meta-icon">
+                <i class="bi bi-building"></i>
+            </span>
+
+            <div>
+                <small>Departman</small>
+
+                <strong>
+                    @(Model.CurrentUser?.Department?.Name ?? "Atanmamış")
+                </strong>
+            </div>
+
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     PROFILE FORMS
+     ====================================================== -->
+
+<div class="profile-form-grid">
+
+
+    <!-- ==================================================
+         PERSONAL INFORMATION
+         ================================================== -->
+
+    <section class="project-section-card">
+
+        <header class="project-section-header">
+
+            <div>
+
+                <span class="project-section-icon">
+                    <i class="bi bi-person"></i>
+                </span>
+
+                <div>
+                    <h2>Profil Bilgileri</h2>
+                    <p>Hesabınızda görünen adı güncelleyin.</p>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <form method="post" enctype="multipart/form-data"
+              asp-page-handler="UpdateProfile">
+
+            <div class="form-section-body">
+
+                <div asp-validation-summary="ModelOnly"
+                     class="form-validation-summary">
+                </div>
+
+
+                <div class="form-field">
+
+                    <label asp-for="Input.FullName">
+                        Ad Soyad
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-person"></i>
+
+                        <input asp-for="Input.FullName"
+                               class="form-control"
+                               placeholder="Ad Soyad"
+                               autocomplete="name" />
+
+                    </div>
+
+
+                    <span asp-validation-for="Input.FullName"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+                <div class="form-field">
+                    <label asp-for="ProfilePhoto">Profil Fotoğrafı</label>
+                    <input asp-for="ProfilePhoto" type="file" class="form-control" accept="image/jpeg,image/png,image/webp" />
+                    <span asp-validation-for="ProfilePhoto" class="form-validation-message"></span>
+                    <small class="form-help">JPG, PNG veya WEBP · en fazla 3 MB</small>
+                </div>
+
+
+                <div class="profile-readonly-grid">
+
+                    <div class="profile-readonly-field">
+
+                        <span>
+                            E-posta
+                        </span>
+
+                        <strong>
+                            @(Model.CurrentUser?.Email ?? "—")
+                        </strong>
+
+                    </div>
+
+
+                    <div class="profile-readonly-field">
+
+                        <span>
+                            Departman
+                        </span>
+
+                        <strong>
+                            @(Model.CurrentUser?.Department?.Name ?? "Atanmamış")
+                        </strong>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <footer class="profile-card-footer">
+
+                <button type="submit"
+                        class="project-action-button project-action-primary">
+
+                    <i class="bi bi-check-lg"></i>
+                    Profili Güncelle
+
+                </button>
+
+            </footer>
+
+        </form>
+
+    </section>
+
+
+    <!-- ==================================================
+         PASSWORD
+         ================================================== -->
+
+    <section class="project-section-card">
+
+        <header class="project-section-header">
+
+            <div>
+
+                <span class="project-section-icon">
+                    <i class="bi bi-shield-lock"></i>
+                </span>
+
+                <div>
+                    <h2>Şifre Güvenliği</h2>
+                    <p>Hesabınızın giriş şifresini değiştirin.</p>
+                </div>
+
+            </div>
+
+        </header>
+
+
+        <form method="post"
+              asp-page-handler="ChangePassword">
+
+            <div class="form-section-body">
+
+                <div asp-validation-summary="ModelOnly"
+                     class="form-validation-summary">
+                </div>
+
+
+                <!-- Current Password -->
+
+                <div class="form-field">
+
+                    <label asp-for="PasswordInput.CurrentPassword">
+                        Mevcut Şifre
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-lock"></i>
+
+                        <input asp-for="PasswordInput.CurrentPassword"
+                               type="password"
+                               class="form-control"
+                               placeholder="Mevcut şifrenizi girin"
+                               autocomplete="current-password" />
+
+                    </div>
+
+
+                    <span asp-validation-for="PasswordInput.CurrentPassword"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- New Password -->
+
+                <div class="form-field">
+
+                    <label asp-for="PasswordInput.NewPassword">
+                        Yeni Şifre
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-key"></i>
+
+                        <input asp-for="PasswordInput.NewPassword"
+                               type="password"
+                               class="form-control"
+                               placeholder="En az 6 karakter"
+                               autocomplete="new-password" />
+
+                    </div>
+
+
+                    <span asp-validation-for="PasswordInput.NewPassword"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Confirm -->
+
+                <div class="form-field">
+
+                    <label asp-for="PasswordInput.ConfirmPassword">
+                        Yeni Şifre Tekrar
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-key-fill"></i>
+
+                        <input asp-for="PasswordInput.ConfirmPassword"
+                               type="password"
+                               class="form-control"
+                               placeholder="Yeni şifrenizi tekrar girin"
+                               autocomplete="new-password" />
+
+                    </div>
+
+
+                    <span asp-validation-for="PasswordInput.ConfirmPassword"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <div class="profile-security-note">
+
+                    <i class="bi bi-info-circle"></i>
+
+                    <span>
+                        Yeni şifreniz en az 6 karakter olmalıdır.
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <footer class="profile-card-footer">
+
+                <button type="submit"
+                        class="project-action-button project-action-primary">
+
+                    <i class="bi bi-shield-check"></i>
+                    Şifreyi Değiştir
+
+                </button>
+
+            </footer>
+
+        </form>
+
+    </section>
+
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

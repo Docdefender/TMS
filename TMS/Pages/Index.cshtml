@@ -1,0 +1,212 @@
+@page
+@inject TMS.Services.AccessService Access
+@model IndexModel
+@using TMS.Models
+@{
+    ViewData["Title"] = "Kontrol Paneli";
+    var today = DateTime.Today;
+    var timelineProjects = Model.Dashboard.MyAssignedProjects.Where(p => p.EndDate.HasValue).OrderBy(p => p.StartDate).ToList();
+    var timelineStart = timelineProjects.Count > 0 ? timelineProjects.Min(p => p.StartDate.Date) : today;
+    var timelineEnd = timelineProjects.Count > 0 ? timelineProjects.Max(p => p.EndDate!.Value.Date) : today.AddDays(30);
+    if (timelineEnd <= timelineStart) timelineEnd = timelineStart.AddDays(1);
+    var timelineDays = Math.Max(1, (timelineEnd - timelineStart).TotalDays);
+    var compressedGaps = new List<(DateTime Start, DateTime End, double OriginalDays, double DisplayDays)>();
+    if (timelineProjects.Count > 1)
+    {
+        var intervals = timelineProjects
+            .Select(p => (Start: p.StartDate.Date, End: p.EndDate!.Value.Date < p.StartDate.Date ? p.StartDate.Date : p.EndDate.Value.Date))
+            .OrderBy(x => x.Start).ToList();
+        var mergedEnd = intervals[0].End;
+        foreach (var interval in intervals.Skip(1))
+        {
+            if (interval.Start <= mergedEnd.AddDays(1))
+            {
+                if (interval.End > mergedEnd) mergedEnd = interval.End;
+                continue;
+            }
+            var gapDays = (interval.Start - mergedEnd).TotalDays;
+            if (gapDays > 30)
+            {
+                var displayDays = Math.Min(14, Math.Max(8, gapDays * .16));
+                compressedGaps.Add((mergedEnd, interval.Start, gapDays, displayDays));
+            }
+            mergedEnd = interval.End;
+        }
+    }
+    var compressedTimelineDays = Math.Max(1, timelineDays - compressedGaps.Sum(x => x.OriginalDays - x.DisplayDays));
+    Func<DateTime, double> compressedOffset = date =>
+    {
+        var offset = (date.Date - timelineStart).TotalDays;
+        foreach (var gap in compressedGaps)
+        {
+            if (date.Date >= gap.End) offset -= gap.OriginalDays - gap.DisplayDays;
+            else if (date.Date > gap.Start) offset -= (date.Date - gap.Start).TotalDays * (1 - gap.DisplayDays / gap.OriginalDays);
+        }
+        return offset;
+    };
+    Func<DateTime, double> timelinePosition = date => Math.Clamp(compressedOffset(date) / compressedTimelineDays * 100, 0, 100);
+    var timelineMiddle = timelineStart.AddDays(timelineDays / 2);
+    if (compressedGaps.Count > 0)
+    {
+        var low = timelineStart;
+        var high = timelineEnd;
+        for (var i = 0; i < 24; i++)
+        {
+            var middle = new DateTime(low.Ticks + (high.Ticks - low.Ticks) / 2);
+            if (compressedOffset(middle) < compressedTimelineDays / 2) low = middle; else high = middle;
+        }
+        timelineMiddle = high.Date;
+    }
+}
+
+<section class="command-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><strong>Kontrol Paneli</strong></nav>
+        <h1>Bugünün çalışma görünümü</h1>
+        <p>Projeler, görevler ve talepler tek bir akışta.</p>
+    </div>
+    <div class="command-header-actions">
+        @if (await Access.CanCreateProjectAsync())
+        {
+            <a asp-page="/Projects/Create" class="project-action-button project-action-secondary"><i class="bi bi-folder-plus"></i> Yeni Proje</a>
+        }
+        <a asp-page="/Tasks/Create" class="project-action-button project-action-primary"><i class="bi bi-plus-lg"></i> Yeni Görev</a>
+    </div>
+</section>
+
+<section class="command-kpi-grid" aria-label="Genel durum">
+    <a asp-page="/Projects/Index" class="command-kpi command-kpi-turquoise"><span class="command-kpi-icon"><i class="bi bi-folder2-open"></i></span><span><small>Görünür proje</small><strong>@Model.Dashboard.TotalProjects</strong><em>@Model.Dashboard.InProgressProjects aktif</em></span></a>
+    <a asp-page="/Tasks/Index" asp-route-statuses="InProgress" class="command-kpi command-kpi-blue"><span class="command-kpi-icon"><i class="bi bi-list-check"></i></span><span><small>Devam eden görev</small><strong>@Model.Dashboard.InProgressTasks</strong><em>@Model.Dashboard.TotalTasks toplam görev</em></span></a>
+    <a asp-page="/Tickets/Index" class="command-kpi command-kpi-amber"><span class="command-kpi-icon"><i class="bi bi-inbox"></i></span><span><small>Açık ticket</small><strong>@Model.Dashboard.OpenTickets</strong><em>Yanıt ve işlem bekleyenler</em></span></a>
+    <a asp-page="/Tasks/Index" asp-route-statuses="overdue" class="command-kpi command-kpi-red"><span class="command-kpi-icon"><i class="bi bi-clock-history"></i></span><span><small>Geciken iş</small><strong>@(Model.Dashboard.OverdueProjectsCount + Model.Dashboard.OverdueTasksCount)</strong><em>@Model.Dashboard.OverdueProjectsCount proje · @Model.Dashboard.OverdueTasksCount görev</em></span></a>
+</section>
+
+<section class="command-main-grid">
+    <article class="command-panel command-projects-panel">
+        <header class="command-panel-header"><div><span class="command-eyebrow">AKTİF ÇALIŞMALAR</span><h2>Projelerim</h2></div><a asp-page="/Projects/Index">Tümünü gör <i class="bi bi-arrow-right"></i></a></header>
+        @if (Model.Dashboard.MyAssignedProjects.Count == 0)
+        {
+            <div class="command-empty"><i class="bi bi-folder2"></i><strong>Aktif proje bulunmuyor</strong><span>Dahil olduğunuz projeler burada listelenecek.</span></div>
+        }
+        else
+        {
+            <div class="command-project-list">
+                @foreach (var project in Model.Dashboard.MyAssignedProjects)
+                {
+                    var visibleTasks = project.Tasks.Where(t => !t.IsDeleted).ToList();
+                    var completed = visibleTasks.Count(t => t.Status == TMS.Models.TaskStatus.Done);
+                    var progress = visibleTasks.Count == 0 ? 0 : (int)Math.Round(completed * 100d / visibleTasks.Count);
+                    var people = project.Members.Select(m => m.User).Where(u => u is not null).Cast<ApplicationUser>().ToList();
+                    if (project.Manager is not null && people.All(u => u.Id != project.Manager.Id)) people.Insert(0, project.Manager);
+                    <a asp-page="/Projects/Details" asp-route-id="@project.Id" class="command-project-row"
+                       data-record-preview-trigger
+                       data-preview-type="Proje"
+                       data-preview-key="PRJ-@project.Id.ToString("D4")"
+                       data-preview-title="@project.Name"
+                       data-preview-status="@StatusText(project.Status)"
+                       data-preview-subtitle="@(project.Department?.Name ?? "Departman yok") · @(project.Category?.Name ?? "Kategori yok")"
+                       data-preview-description="@project.Description"
+                       data-preview-meta-1-label="Proje sorumlusu"
+                       data-preview-meta-1-value="@(project.Manager?.FullName ?? "Atanmamış")"
+                       data-preview-meta-2-label="Başlangıç"
+                       data-preview-meta-2-value="@project.StartDate.ToString("dd MMM yyyy")"
+                       data-preview-meta-3-label="Bitiş"
+                       data-preview-meta-3-value="@(project.EndDate?.ToString("dd MMM yyyy") ?? "Belirtilmedi")"
+                       data-preview-meta-4-label="Ekip"
+                       data-preview-meta-4-value="@people.Count kişi"
+                       data-preview-detail-url="@Url.Page("/Projects/Details", new { id = project.Id })"
+                       data-preview-secondary-label="Pipeline"
+                       data-preview-secondary-url="@Url.Page("/Pipeline/Details", new { id = project.Id })">
+                        <span class="command-project-symbol"><i class="bi bi-folder"></i></span>
+                        <span class="command-project-name"><strong>@project.Name</strong><small>@(project.Department?.Name ?? "Departman yok") · PRJ-@project.Id.ToString("D4")</small></span>
+                        <span class="command-project-status @StatusClass(project.Status)">@StatusText(project.Status)</span>
+                        <span class="command-avatar-stack" aria-label="İlgili kişiler">
+                            @foreach (var person in people.Take(3))
+                            {
+                                <span class="command-avatar" title="@person.FullName">@if (!string.IsNullOrWhiteSpace(person.ProfileImagePath)) { <img src="@person.ProfileImagePath" alt="" /> } else { @Initials(person.FullName) }</span>
+                            }
+                            @if (people.Count > 3) { <span class="command-avatar command-avatar-more">+@(people.Count - 3)</span> }
+                        </span>
+                        <span class="command-progress-cell"><strong>%@progress</strong><span><i style="width:@progress%"></i></span></span>
+                        <span class="command-project-date"><small>Bitiş</small><strong>@(project.EndDate?.ToString("dd MMM") ?? "—")</strong></span>
+                        <i class="bi bi-chevron-right command-row-arrow"></i>
+                    </a>
+                }
+            </div>
+        }
+    </article>
+
+    <article class="command-panel command-activity-panel">
+        <header class="command-panel-header"><div><span class="command-eyebrow">CANLI KAYIT</span><h2>Son hareketler</h2></div><a asp-page="/Admin/AuditLogs">Günlük <i class="bi bi-arrow-right"></i></a></header>
+        <div class="command-activity-list">
+            @foreach (var item in Model.Dashboard.RecentActivity.Take(7))
+            {
+                <div class="command-activity-item"><span class="command-avatar">@if (!string.IsNullOrWhiteSpace(item.User?.ProfileImagePath)) { <img src="@item.User.ProfileImagePath" alt="" /> } else { @Initials(item.User?.FullName ?? "Sistem") }</span><span><strong>@(item.User?.FullName ?? "Sistem")</strong><p>@ActivityText(item.Action, item.EntityType)</p><small>@RelativeTime(item.Timestamp)</small></span></div>
+            }
+            @if (Model.Dashboard.RecentActivity.Count == 0) { <div class="command-empty command-empty-small"><i class="bi bi-activity"></i><span>Henüz hareket bulunmuyor.</span></div> }
+        </div>
+    </article>
+</section>
+
+<section class="command-panel command-timeline-panel">
+    <header class="command-panel-header"><div><span class="command-eyebrow">PLAN</span><h2>Proje zaman çizelgesi</h2></div><span class="command-panel-note">@timelineStart.ToString("dd MMM") – @timelineEnd.ToString("dd MMM yyyy")@if (compressedGaps.Count > 0) { <small> · @compressedGaps.Count uzun boşluk kısaltıldı</small> }</span></header>
+    @if (timelineProjects.Count == 0)
+    {
+        <div class="command-empty command-empty-small"><i class="bi bi-calendar3"></i><span>Tarih aralığı tanımlı aktif proje bulunmuyor.</span></div>
+    }
+    else
+    {
+        <div class="command-timeline">
+            <div class="command-timeline-axis">
+                <span>@timelineStart.ToString("dd MMM")</span><span>@timelineMiddle.ToString("dd MMM")</span><span>@timelineEnd.ToString("dd MMM")</span>
+                @foreach (var gap in compressedGaps)
+                {
+                    var gapLeft = timelinePosition(gap.Start);
+                    var gapRight = timelinePosition(gap.End);
+                    var gapCenter = (gapLeft + gapRight) / 2;
+                    <i class="command-timeline-break" style="left:@gapCenter.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%" title="@((int)Math.Round(gap.OriginalDays)) günlük boşluk kısaltıldı" aria-label="@((int)Math.Round(gap.OriginalDays)) günlük boşluk kısaltıldı"><b>//</b></i>
+                }
+            </div>
+            @foreach (var project in timelineProjects)
+            {
+                var projectEnd = project.EndDate!.Value.Date < project.StartDate.Date ? project.StartDate.Date : project.EndDate.Value.Date;
+                var left = timelinePosition(project.StartDate.Date);
+                var width = Math.Max(3, timelinePosition(projectEnd) - left);
+                if (left + width > 100) width = 100 - left;
+                <a asp-page="/Projects/Details" asp-route-id="@project.Id" class="command-timeline-row"
+                   data-record-preview-trigger
+                   data-preview-type="Proje"
+                   data-preview-key="PRJ-@project.Id.ToString("D4")"
+                   data-preview-title="@project.Name"
+                   data-preview-status="@StatusText(project.Status)"
+                   data-preview-subtitle="@(project.Department?.Name ?? "Departman yok") · @(project.Category?.Name ?? "Kategori yok")"
+                   data-preview-description="@project.Description"
+                   data-preview-meta-1-label="Proje sorumlusu"
+                   data-preview-meta-1-value="@(project.Manager?.FullName ?? "Atanmamış")"
+                   data-preview-meta-2-label="Başlangıç"
+                   data-preview-meta-2-value="@project.StartDate.ToString("dd MMM yyyy")"
+                   data-preview-meta-3-label="Bitiş"
+                   data-preview-meta-3-value="@projectEnd.ToString("dd MMM yyyy")"
+                   data-preview-meta-4-label="İlerleme"
+                   data-preview-meta-4-value="@ProjectProgress(project.Tasks)%"
+                   data-preview-detail-url="@Url.Page("/Projects/Details", new { id = project.Id })"
+                   data-preview-secondary-label="Pipeline"
+                   data-preview-secondary-url="@Url.Page("/Pipeline/Details", new { id = project.Id })"><span class="command-timeline-label"><strong>@project.Name</strong><small>@StatusText(project.Status) · @project.StartDate.ToString("dd MMM")–@projectEnd.ToString("dd MMM")</small></span><span class="command-timeline-track"><i class="@StatusClass(project.Status)" style="left:@left.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%;width:@width.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)%" title="@project.Name · @project.StartDate.ToString("dd MMM yyyy") – @projectEnd.ToString("dd MMM yyyy")"><b>@project.Name</b></i></span></a>
+            }
+        </div>
+    }
+</section>
+
+@functions {
+    static string Initials(string name) { var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries); return string.Concat(parts.Take(2).Select(x => char.ToUpperInvariant(x[0]))); }
+    static int ProjectProgress(IEnumerable<TaskItem> tasks) { var visible = tasks.Where(x => !x.IsDeleted).ToList(); return visible.Count == 0 ? 0 : (int)Math.Round(visible.Count(x => x.Status == TMS.Models.TaskStatus.Done) * 100d / visible.Count); }
+    static string StatusText(ProjectStatus status) => status switch { ProjectStatus.NotStarted => "Başlamadı", ProjectStatus.InProgress => "Devam ediyor", ProjectStatus.Completed => "Tamamlandı", ProjectStatus.OnHold => "Beklemede", ProjectStatus.Cancelled => "İptal", _ => status.ToString() };
+    static string StatusClass(ProjectStatus status) => status switch { ProjectStatus.InProgress => "status-turquoise", ProjectStatus.Completed => "status-green", ProjectStatus.OnHold => "status-amber", ProjectStatus.Cancelled => "status-red", _ => "status-slate" };
+    static string ActivityText(string action, string entityType)
+    {
+        var entity = entityType switch { "Project" => "projeyi", "TaskItem" => "görevi", "Ticket" => "ticket'ı", "User" => "oturumu", "UserProfile" => "profilini", _ => "kaydı" };
+        var verb = action.ToLowerInvariant() switch { "created" => "oluşturdu", "updated" => "güncelledi", "deleted" => "sildi", "login" => "açtı", "taskschedulechanged" => "yeniden planladı", "changepassword" => "güncelledi", _ => "güncelledi" };
+        return $"{entity} {verb}.";
+    }
+    static string RelativeTime(DateTime date) { var span = DateTime.Now - date; if (span.TotalMinutes < 1) return "Az önce"; if (span.TotalHours < 1) return $"{Math.Max(1, (int)span.TotalMinutes)} dk önce"; if (span.TotalDays < 1) return $"{(int)span.TotalHours} sa önce"; if (span.TotalDays < 7) return $"{(int)span.TotalDays} gün önce"; return date.ToString("dd MMM yyyy"); }
+}

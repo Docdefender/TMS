@@ -1,0 +1,84 @@
+@page
+@model TMS.Pages.Tickets.UnmatchedModel
+@{
+    ViewData["Title"] = "Eşleşmeyen gönderenler";
+    var matchableCount = Model.MatchingUsers.Count(x => x.Value.Count > 0);
+    var oldest = Model.Items.FirstOrDefault();
+    var oldestHours = oldest == null ? 0 : Math.Max(0, (int)Math.Floor((DateTime.UtcNow - oldest.ReceivedAt).TotalHours));
+}
+<div class="ticket-page">
+    <header class="ticket-page-header">
+        <div>
+            <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Tickets/Index">Ticket'lar</a><i class="bi bi-chevron-right"></i><strong>Eşleşmeyen gönderenler</strong></nav>
+            <h1>Eşleşmeyen gönderenler</h1>
+            <p>Tanımlı bir kullanıcıyla eşleşmeyen iletileri inceleyin ve doğru talep sahibine bağlayın.</p>
+        </div>
+    </header>
+
+    <section class="ticket-intake-summary" aria-label="Eşleşmeyen ileti özeti">
+        <div><span class="ticket-summary-icon ticket-summary-icon-blue"><i class="bi bi-inbox"></i></span><p><small>Bekleyen</small><strong>@Model.Items.Count</strong></p></div>
+        <div><span class="ticket-summary-icon ticket-summary-icon-green"><i class="bi bi-person-check"></i></span><p><small>Eşleşmeye hazır</small><strong>@matchableCount</strong></p></div>
+        <div><span class="ticket-summary-icon ticket-summary-icon-amber"><i class="bi bi-hourglass-split"></i></span><p><small>En uzun bekleyen</small><strong>@(oldest == null ? "—" : oldestHours < 24 ? $"{oldestHours} sa" : $"{oldestHours / 24} gün")</strong></p></div>
+    </section>
+
+    <div class="ticket-intake-layout">
+        <form method="post" asp-page-handler="Stage" class="ticket-panel ticket-intake-form">
+            <div class="ticket-panel-heading">
+                <div><span class="ticket-step-number">1</span><h2>İletiyi havuza al</h2></div>
+                <span>Elle kayıt</span>
+            </div>
+            <div class="ticket-panel-body ticket-form">
+                <div asp-validation-summary="All" class="form-validation-summary"></div>
+                <div class="ticket-field"><label asp-for="SenderEmail">Gönderen e-posta</label><input asp-for="SenderEmail" class="form-control" required placeholder="kullanici@firma.com" /></div>
+                <div class="ticket-field"><label asp-for="Subject">Konu</label><input asp-for="Subject" maxlength="200" class="form-control" required placeholder="İletinin konusu" /></div>
+                <div class="ticket-field"><label asp-for="Body">İleti</label><textarea asp-for="Body" rows="4" class="form-control" required placeholder="İleti içeriğini yazın..."></textarea></div>
+                <div class="ticket-field"><label asp-for="ReceivedAt">Geliş zamanı</label><input asp-for="ReceivedAt" type="datetime-local" class="form-control" /></div>
+                <div class="ticket-field"><label asp-for="SupportDepartmentId">Takip eden departman</label><select asp-for="SupportDepartmentId" asp-items="Model.Departments" class="form-select" required><option value="">Seçiniz</option></select></div>
+                <p class="ticket-form-hint"><i class="bi bi-info-circle"></i> Posta entegrasyonu açıldığında eşleşmeyen iletiler bu havuza otomatik gelir.</p>
+                <div class="ticket-form-actions"><button type="submit" class="project-action-button project-action-primary"><i class="bi bi-plus-lg"></i> Havuza ekle</button></div>
+            </div>
+        </form>
+        <section class="ticket-panel ticket-intake-queue">
+            <div class="ticket-panel-heading">
+                <div><span class="ticket-step-number">2</span><h2>Bekleyen iletiler</h2></div>
+                <span>@Model.Items.Count kayıt · eskiden yeniye</span>
+            </div>
+            @if (Model.Items.Count == 0)
+            {
+                <div class="ticket-empty ticket-intake-empty"><span><i class="bi bi-check2-circle" aria-hidden="true"></i></span><h3>Havuz temiz</h3><p>Eşleştirme bekleyen ileti bulunmuyor.</p></div>
+            }
+            <div class="ticket-intake-list">
+                @foreach (var item in Model.Items)
+                {
+                    var canMatch = Model.MatchingUsers[item.Id].Count > 0;
+                    <article class="ticket-pending-item @(canMatch ? "is-matchable" : string.Empty)">
+                        <div class="ticket-pending-head">
+                            <div>
+                                <span class="ticket-intake-key">INT-@item.ReceivedAt.Year-@item.Id.ToString("D6")</span>
+                                <h3>@item.Subject</h3>
+                            </div>
+                            <span class="ticket-pill @(canMatch ? "ticket-status-resolved" : "ticket-pill-warning")">@(canMatch ? "Eşleşmeye hazır" : "Kullanıcı bekliyor")</span>
+                        </div>
+                        <div class="ticket-pending-meta">
+                            <span><i class="bi bi-envelope"></i> @item.SenderEmail</span>
+                            <span><i class="bi bi-clock"></i> @item.ReceivedAt.ToLocalTime().ToString("dd MMM yyyy · HH:mm")</span>
+                            <span><i class="bi bi-building"></i> @item.SupportDepartment.Name</span>
+                        </div>
+                        <p class="ticket-message-body ticket-pending-preview">@item.Body</p>
+                        @if (canMatch)
+                        {
+                            <form method="post" asp-page-handler="Match" asp-route-id="@item.Id" class="ticket-inline-form ticket-match-form">
+                                <select name="requesterUserId" asp-items="Model.MatchingUsers[item.Id]" class="form-select" aria-label="Eşleşen kullanıcı"></select>
+                                <button type="submit" class="project-action-button project-action-primary"><i class="bi bi-arrow-right"></i> Ticket'a dönüştür</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <div class="ticket-unmatched-action"><p><i class="bi bi-person-exclamation"></i> Bu e-posta adresine ait aktif kullanıcı bulunamadı.</p>@if (User.IsInRole("Admin")) { <a asp-page="/Admin/Users" class="ticket-text-link">Kullanıcıları yönet <i class="bi bi-arrow-up-right"></i></a> }</div>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+</div>

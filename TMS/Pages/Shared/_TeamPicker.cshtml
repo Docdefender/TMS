@@ -1,0 +1,15 @@
+@model TMS.Models.TeamPickerModel
+<div data-team-picker>
+    <script type="application/json" data-team-data>@Html.Raw(System.Text.Json.JsonSerializer.Serialize(new {
+        departments = Model.Departments.Select(x => new { id = x.Id, name = x.Name }),
+        users = Model.Users.Select(x => new { id = x.Id, name = x.FullName, departmentId = x.DepartmentId ?? -1 }),
+        selected = Model.SelectedIds
+    }))</script>
+    <div data-own-team></div>
+    <label for="additional-departments">Başka departmandan katılımcı eklenecek mi?</label>
+    <select id="additional-departments" data-extra-choice class="form-control"><option value="no">Hayır</option><option value="yes">Evet</option></select>
+    <div data-extra-teams hidden></div>
+    <button type="button" data-add-team hidden class="project-action-button project-action-secondary">Başka departman ekle</button>
+    <noscript>Departman ve ekip seçimi için JavaScript etkin olmalıdır.</noscript>
+</div>
+<script src="~/js/team-picker.js" asp-append-version="true" defer></script>

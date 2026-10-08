@@ -1,0 +1,267 @@
+﻿@page
+@model TMS.Pages.Admin.CategoriesModel
+
+@{
+    ViewData["Title"] = "Kategorileri Yönet";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="admin-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><span>Yönetim</span><i class="bi bi-chevron-right"></i><strong>Kategoriler</strong></nav>
+
+        <h1 class="admin-page-title">
+            Kategoriler
+        </h1>
+
+        <p class="admin-page-description">
+            Proje ve görevlerin sınıflandırılmasında kullanılan kategori bilgilerini yönetin.
+        </p>
+
+    </div>
+
+
+    <div class="admin-header-summary">
+
+        <span>Toplam</span>
+
+        <strong>
+            @Model.Categories.Count
+        </strong>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     CREATE
+     ====================================================== -->
+
+<section class="admin-section-card">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-tag-fill"></i>
+            </span>
+
+            <div>
+                <h2>Yeni Kategori</h2>
+                <p>Projeler ve görevler için yeni bir sınıflandırma oluşturun.</p>
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <div class="admin-section-body">
+
+        <form method="post"
+              class="admin-create-form">
+
+            <div class="admin-create-fields">
+
+                <div class="form-field">
+
+                    <label asp-for="NewCategory.Name">
+                        Kategori Adı
+                        <span class="form-required">*</span>
+                    </label>
+
+                    <input asp-for="NewCategory.Name"
+                           class="form-control"
+                           placeholder="Örn. Yazılım Geliştirme"
+                           autocomplete="off" />
+
+                    <span asp-validation-for="NewCategory.Name"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <div class="form-field">
+
+                    <label asp-for="NewCategory.Description">
+                        Açıklama
+                    </label>
+
+                    <input asp-for="NewCategory.Description"
+                           class="form-control"
+                           placeholder="Kategori hakkında kısa açıklama"
+                           autocomplete="off" />
+
+                    <span asp-validation-for="NewCategory.Description"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <button type="submit"
+                    class="project-action-button project-action-primary admin-create-button">
+
+                <i class="bi bi-plus-lg"></i>
+                Kategori Ekle
+
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     LIST
+     ====================================================== -->
+
+<section class="admin-section-card">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-tags"></i>
+            </span>
+
+            <div>
+                <h2>Kategori Listesi</h2>
+                <p>Sistemde tanımlı kategoriler</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.Categories.Any())
+        {
+            <span class="admin-section-count">
+                @Model.Categories.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.Categories.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-tags"></i>
+            </span>
+
+            <h3>Henüz kategori yok</h3>
+
+            <p>
+                Yukarıdaki formu kullanarak ilk kategoriyi oluşturabilirsiniz.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table">
+
+                <thead>
+                    <tr>
+                        <th>Kategori</th>
+                        <th>Açıklama</th>
+                        <th class="admin-table-actions-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var cat in Model.Categories)
+                    {
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-entity">
+
+                                    <span class="admin-entity-icon">
+                                        <i class="bi bi-tag"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>@cat.Name</strong>
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(cat.Description))
+                                {
+                                    <span class="admin-description">
+                                        @cat.Description
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Açıklama yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td class="admin-table-actions">
+
+                                <form method="post"
+                                      asp-page-handler="Delete"
+                                      asp-route-id="@cat.Id">
+
+                                    <button type="submit"
+                                            class="admin-delete-button"
+                                            title="Kategoriyi sil"
+                                            aria-label="@cat.Name kategorisini sil"
+                                            onclick="return confirm('Bu kategoriyi silmek istediğinizden emin misiniz?');">
+
+                                        <i class="bi bi-trash"></i>
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

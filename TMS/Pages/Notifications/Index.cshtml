@@ -1,0 +1,11 @@
+@page
+@model TMS.Pages.Notifications.IndexModel
+@{ ViewData["Title"] = "Bildirimler"; }
+<div class="notification-page">
+    <header class="ticket-page-header"><div><nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Bildirimler</strong></nav><h1>Bildirimler</h1><p>Atamalarınızı ve önemli gelişmeleri takip edin.</p></div>@if (Model.Items.Any(x => x.ReadAt == null)) { <form method="post" asp-page-handler="ReadAll"><button class="project-action-button project-action-secondary"><i class="bi bi-check2-all"></i> Tümünü okundu işaretle</button></form> }</header>
+    <section class="ticket-panel notification-list-page">
+        @if (Model.Items.Count == 0) { <div class="ticket-empty"><i class="bi bi-bell-slash"></i><p>Henüz bildiriminiz yok.</p></div> }
+        @foreach (var item in Model.Items)
+        { <article class="notification-row @(item.ReadAt == null ? "is-unread" : "")"><span><i class="bi @(item.Type == "Assignment" ? "bi-person-check" : "bi-bell")"></i></span><div><h2>@item.Title</h2><p>@item.Message</p><small>@item.CreatedAt.ToLocalTime().ToString("dd MMMM yyyy · HH:mm")</small></div><div class="notification-row-actions">@if (item.Url != null) { <a href="@item.Url" class="project-action-button project-action-secondary">Kaydı aç</a> } @if (item.ReadAt == null) { <form method="post" asp-page-handler="Read"><input type="hidden" name="id" value="@item.Id" /><button class="project-action-button project-action-secondary">Okundu</button></form> }</div></article> }
+    </section>
+</div>

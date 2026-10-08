@@ -1,0 +1,203 @@
+@page
+@model TMS.Pages.Admin.OrganizationModel
+
+@{
+    ViewData["Title"] = "Organizasyon ve Yetkiler";
+}
+
+<section class="admin-page-header organization-page-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Admin/Departments">Departmanlar</a><i class="bi bi-chevron-right"></i><strong>Yetki ve Sorumluluklar</strong></nav>
+        <h1 class="admin-page-title">Organizasyon ve Yetkiler</h1>
+        <p class="admin-page-description">
+            Departman sorumlularını, varsayılan Manager'ları ve kullanıcı erişimlerini tek alandan yönetin.
+        </p>
+    </div>
+
+    <div class="organization-header-summaries" aria-label="Organizasyon özeti">
+        <div class="admin-header-summary"><span>Departman</span><strong>@Model.Departments.Count</strong></div>
+        <div class="admin-header-summary"><span>Manager</span><strong>@Model.Managers.Count</strong></div>
+        <div class="admin-header-summary"><span>Kullanıcı</span><strong>@Model.Users.Count</strong></div>
+    </div>
+</section>
+
+@if (Model.Message is not null)
+{
+    <div class="admin-feedback admin-feedback-success" role="status">
+        <span><i class="bi bi-check-circle"></i></span>
+        <p>@Model.Message</p>
+    </div>
+}
+
+<section class="organization-section-heading">
+    <div>
+        <span class="admin-section-icon"><i class="bi bi-diagram-3"></i></span>
+        <div>
+            <h2>Departman sorumlulukları</h2>
+            <p>Birden fazla Manager seçebilir, aralarından birini varsayılan sorumlu yapabilirsiniz.</p>
+        </div>
+    </div>
+    <span class="admin-section-count">@Model.Departments.Count departman</span>
+</section>
+
+<div class="organization-department-grid">
+    @foreach (var department in Model.Departments)
+    {
+        var assignedManagerIds = department.Managers.Select(x => x.UserId).ToHashSet();
+        var assignedManagerCount = assignedManagerIds.Count;
+        var memberCount = Model.Users.Count(x => x.DepartmentId == department.Id);
+        var defaultManager = Model.Managers.FirstOrDefault(manager =>
+            department.Managers.Any(link => link.UserId == manager.Id && link.IsDefault));
+
+        <section class="organization-department-card">
+            <header class="organization-department-header">
+                <div class="organization-department-identity">
+                    <span class="organization-department-icon"><i class="bi bi-building"></i></span>
+                    <div>
+                        <h3>@department.Name</h3>
+                        <p>@memberCount kullanıcı · @assignedManagerCount sorumlu</p>
+                    </div>
+                </div>
+
+                @if (defaultManager is not null)
+                {
+                    <span class="organization-default-badge" title="Varsayılan Manager">
+                        <i class="bi bi-star-fill"></i>
+                        @defaultManager.FullName
+                    </span>
+                }
+                else
+                {
+                    <span class="organization-default-badge is-empty">Varsayılan yok</span>
+                }
+            </header>
+
+            <form method="post" asp-page-handler="Managers" class="organization-manager-form">
+                <input type="hidden" name="departmentId" value="@department.Id" />
+
+                <fieldset class="organization-manager-options">
+                    <legend>Sorumlu Manager'lar</legend>
+                    <p class="organization-selection-hint">Bir veya daha fazla kişi seçin.</p>
+
+                    <div class="organization-manager-list">
+                        @foreach (var manager in Model.Managers)
+                        {
+                            <label class="organization-manager-option">
+                                <input type="checkbox" name="managerIds" value="@manager.Id"
+                                       checked="@(assignedManagerIds.Contains(manager.Id))" />
+                                <span class="organization-manager-avatar" aria-hidden="true">
+                                    @(string.IsNullOrWhiteSpace(manager.FullName) ? "?" : manager.FullName[..1].ToUpperInvariant())
+                                </span>
+                                <span class="organization-manager-name">@manager.FullName</span>
+                                <i class="bi bi-check-lg organization-manager-check" aria-hidden="true"></i>
+                            </label>
+                        }
+
+                        @if (Model.Managers.Count == 0)
+                        {
+                            <p class="organization-empty-inline">Henüz Manager rolünde kullanıcı yok.</p>
+                        }
+                    </div>
+                </fieldset>
+
+                <div class="organization-default-field">
+                    <label for="default-@department.Id">Varsayılan Manager</label>
+                    <select id="default-@department.Id" name="defaultManagerId" class="form-control">
+                        <option value="">Seçin</option>
+                        @foreach (var manager in Model.Managers)
+                        {
+                            <option value="@manager.Id" selected="@(department.Managers.Any(x => x.UserId == manager.Id && x.IsDefault))">
+                                @manager.FullName
+                            </option>
+                        }
+                    </select>
+                </div>
+
+                <button class="project-action-button project-action-primary organization-save-button" type="submit">
+                    <i class="bi bi-check2"></i>
+                    Kaydet
+                </button>
+            </form>
+        </section>
+    }
+</div>
+
+<section class="organization-section-heading organization-tools-heading">
+    <div>
+        <span class="admin-section-icon"><i class="bi bi-sliders"></i></span>
+        <div>
+            <h2>Organizasyon işlemleri</h2>
+            <p>Ana departman değişikliklerini ve devirden kalan görev erişimlerini yönetin.</p>
+        </div>
+    </div>
+</section>
+
+<div class="organization-operation-grid">
+    <section class="organization-operation-card">
+        <header class="organization-operation-header">
+            <span class="organization-operation-icon"><i class="bi bi-person-gear"></i></span>
+            <div>
+                <h3>Kullanıcı departmanı</h3>
+                <p>Kullanıcının organizasyondaki ana departmanını değiştirin.</p>
+            </div>
+        </header>
+
+        <form method="post" asp-page-handler="UserDepartment" class="organization-operation-form">
+            <div class="form-field">
+                <label for="user-department-user">Kullanıcı</label>
+                <select id="user-department-user" name="userId" class="form-control" required>
+                    @foreach (var user in Model.Users)
+                    {
+                        <option value="@user.Id">
+                            @user.FullName — @(Model.Departments.FirstOrDefault(x => x.Id == user.DepartmentId)?.Name ?? "Departmansız")
+                        </option>
+                    }
+                </select>
+            </div>
+            <div class="form-field">
+                <label for="user-department">Yeni ana departman</label>
+                <select id="user-department" name="departmentId" class="form-control">
+                    <option value="">Departmansız</option>
+                    @foreach (var department in Model.Departments)
+                    {
+                        <option value="@department.Id">@department.Name</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="project-action-button project-action-primary">
+                <i class="bi bi-arrow-repeat"></i>
+                Departmanı güncelle
+            </button>
+        </form>
+    </section>
+
+    <section class="organization-operation-card">
+        <header class="organization-operation-header">
+            <span class="organization-operation-icon organization-operation-icon-warning"><i class="bi bi-shield-x"></i></span>
+            <div>
+                <h3>Devirden kalan erişim</h3>
+                <p>Önceki görev sahibinin geçmişten gelen görüntüleme erişimini kaldırın.</p>
+            </div>
+        </header>
+
+        <form method="post" asp-page-handler="RevokeHistory" class="organization-operation-form">
+            <div class="form-field">
+                <label for="history-task">Görev numarası</label>
+                <input id="history-task" name="taskId" type="number" min="1" required class="form-control" placeholder="Örn. 125" />
+            </div>
+            <div class="form-field">
+                <label for="history-user">Önceki görev sahibi</label>
+                <select id="history-user" name="userId" class="form-control">
+                    @foreach (var user in Model.Users)
+                    {
+                        <option value="@user.Id">@user.FullName</option>
+                    }
+                </select>
+            </div>
+            <button type="submit" class="project-action-button project-action-secondary">
+                <i class="bi bi-person-x"></i>
+                Geçmiş erişimini kaldır
+            </button>
+        </form>
+    </section>
+</div>

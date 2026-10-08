@@ -1,0 +1,30 @@
+@using Microsoft.Extensions.Localization
+@using TMS.Resources
+@inject IStringLocalizer<SharedResources> Localizer
+
+@{
+    var currentCulture = System.Globalization.CultureInfo.CurrentUICulture.Name;
+    var returnUrl = Context.Request.Path + Context.Request.QueryString;
+}
+
+<div class="language-switcher">
+    @if (currentCulture == "tr-TR")
+    {
+        <a asp-page="/SetLanguage" asp-route-culture="en-US" asp-route-returnUrl="@returnUrl" 
+           class="language-switcher-link"
+           title="Switch to English">
+            <i class="bi bi-globe"></i>
+            <span class="sidebar-text">English</span>
+        </a>
+    }
+    else
+    {
+        <a asp-page="/SetLanguage" asp-route-culture="tr-TR" asp-route-returnUrl="@returnUrl" 
+           class="language-switcher-link"
+           title="Türkçe'ye geç">
+            <i class="bi bi-globe"></i>
+            <span class="sidebar-text">Türkçe</span>
+        </a>
+    }
+</div>
+

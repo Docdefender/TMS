@@ -1,0 +1,22 @@
+@page
+@model TMS.Pages.Projects.BasicModel
+@{ ViewData["Title"] = "Proje Bilgileri"; }
+<section class="project-detail-header project-basic-header">
+    <div class="project-detail-heading">
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><strong>Temel Bilgiler</strong></nav>
+        <h1>@Model.Summary.Name</h1>
+        <p class="project-detail-description">Bu projeye görev erişiminiz üzerinden temel bilgileri görüntülüyorsunuz.</p>
+    </div>
+</section>
+<section class="project-section-card">
+    <header class="project-section-header"><h2>Proje özeti</h2></header>
+    <div class="form-section-body">
+        <dl>
+            <dt>Açıklama</dt><dd>@Model.Summary.Description</dd>
+            <dt>Departman</dt><dd>@Model.Summary.Department</dd>
+            <dt>Proje sorumlusu</dt><dd>@Model.Summary.Manager</dd>
+            <dt>Durum</dt><dd>@(Model.Summary.Status switch { "NotStarted" => "Başlamadı", "InProgress" => "Devam ediyor", "Completed" => "Tamamlandı", "OnHold" => "Beklemede", "Cancelled" => "İptal edildi", _ => "—" })</dd>
+        </dl>
+        <a asp-page="/Tasks/Index" class="project-action-button">Görevlere dön</a>
+    </div>
+</section>

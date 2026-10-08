@@ -1,0 +1,45 @@
+@page
+@model TMS.Pages.Kanban.IndexModel
+@{
+    ViewData["Title"] = "Görev Board'u";
+    var activeCount = Model.Board.Tasks.Count(x => x.Status != TMS.Models.TaskStatus.Done);
+}
+
+<section class="kanban-page-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Tasks/Index">Görevler</a><i class="bi bi-chevron-right"></i><strong>Board</strong></nav>
+        <h1 class="kanban-page-title">Görev Board'u</h1>
+        <p class="kanban-page-description">Erişebildiğiniz görevleri projeler arasında izleyin, filtreleyin ve durumlarını yönetin.</p>
+    </div>
+
+    <div class="kanban-page-actions">
+        <div class="view-switcher" aria-label="Görev görünümü">
+            <a asp-page="/Tasks/Index"><i class="bi bi-list-ul"></i> Liste</a>
+            <a asp-page="/Kanban/Index" class="is-active"><i class="bi bi-layout-kanban"></i> Board</a>
+        </div>
+        <div class="kanban-page-summary">
+            <div class="kanban-summary-item">
+                <span>Toplam Görev</span>
+                <strong>@Model.Board.Tasks.Count</strong>
+            </div>
+            <div class="kanban-summary-divider"></div>
+            <div class="kanban-summary-item">
+                <span>Açık</span>
+                <strong data-board-active-summary>@activeCount</strong>
+            </div>
+        </div>
+        <a asp-page="/Tasks/Create" class="dashboard-action dashboard-action-primary">
+            <i class="bi bi-plus-lg"></i>
+            Yeni Görev
+        </a>
+    </div>
+</section>
+
+@await Html.PartialAsync("_TaskBoard", Model.Board)
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="~/js/kanban.js" asp-append-version="true"></script>
+}

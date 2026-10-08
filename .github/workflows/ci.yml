@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, main ]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: TMS
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+          cache: true
+          cache-dependency-path: TMS/**/packages.lock.json
+      - name: Restore local tools
+        run: dotnet tool restore
+      - name: Restore application packages
+        run: dotnet restore TMS.csproj --locked-mode
+      - name: Restore test packages
+        run: dotnet restore Tests/AccessChecks/AccessChecks.csproj --locked-mode
+      - name: Build release
+        run: dotnet build TMS.csproj --no-restore -c Release
+      - name: Run access, SQL, and HTTP checks
+        run: dotnet run --project Tests/AccessChecks/AccessChecks.csproj --no-restore --no-launch-profile -c Release -p:UseAppHost=false -- --sql

@@ -1,0 +1,241 @@
+@model TMS.Pages.Pipeline.DetailsModel
+@using TMS.Services
+@{
+    var allTasks = Model.Pipeline.Stages.SelectMany(x => x.Tasks).Concat(Model.Pipeline.UnassignedTasks).DistinctBy(x => x.Id).ToList();
+    var datedTasks = allTasks.Where(x => x.PlannedStartDate.HasValue || x.DueDate.HasValue).ToList();
+    var rawStart = datedTasks.Count > 0 ? datedTasks.Min(x => (x.PlannedStartDate ?? x.DueDate)!.Value.Date) : Model.Pipeline.Project.StartDate.Date;
+    var rawEnd = datedTasks.Count > 0 ? datedTasks.Max(x => (x.DueDate ?? x.PlannedStartDate)!.Value.Date) : (Model.Pipeline.Project.EndDate?.Date ?? rawStart.AddDays(30));
+    DateTime timelineStart;
+    DateTime timelineEnd;
+    double pixelsPerDay;
+    if (Model.Scale == "day")
+    {
+        timelineStart = rawStart.AddDays(-1); timelineEnd = rawEnd.AddDays(1); pixelsPerDay = 42;
+    }
+    else if (Model.Scale == "month")
+    {
+        timelineStart = new DateTime(rawStart.Year, rawStart.Month, 1);
+        timelineEnd = new DateTime(rawEnd.Year, rawEnd.Month, 1).AddMonths(1).AddDays(-1); pixelsPerDay = 4;
+    }
+    else
+    {
+        var mondayOffset = ((int)rawStart.DayOfWeek + 6) % 7;
+        timelineStart = rawStart.AddDays(-mondayOffset);
+        timelineEnd = rawEnd.AddDays(7 - (((int)rawEnd.DayOfWeek + 6) % 7) - 1); pixelsPerDay = 14;
+    }
+    if (timelineEnd < timelineStart) timelineEnd = timelineStart.AddDays(1);
+    var totalDays = Math.Min(730, Math.Max(1, (timelineEnd - timelineStart).Days + 1));
+    timelineEnd = timelineStart.AddDays(totalDays - 1);
+    pixelsPerDay = Math.Min(42, Math.Max(pixelsPerDay, 760d / totalDays));
+    var canvasWidth = Math.Max(760, (int)Math.Ceiling(totalDays * pixelsPerDay));
+    var markerDates = new List<DateTime>();
+    if (Model.Scale == "month")
+    {
+        for (var date = timelineStart; date <= timelineEnd; date = date.AddMonths(1)) markerDates.Add(date);
+    }
+    else
+    {
+        var step = Model.Scale == "day" ? 1 : 7;
+        for (var date = timelineStart; date <= timelineEnd; date = date.AddDays(step)) markerDates.Add(date);
+    }
+    var todayOffset = (DateTime.Today - timelineStart).TotalDays * pixelsPerDay;
+    var showToday = todayOffset >= 0 && todayOffset <= canvasWidth;
+    var hasDependencies = allTasks.Any(x => x.PrerequisiteDependencies.Count > 0);
+    var invariant = System.Globalization.CultureInfo.InvariantCulture;
+}
+
+<section class="timeline-workspace">
+    <header class="timeline-toolbar">
+        <div class="timeline-toolbar-copy">
+            <strong><i class="bi bi-calendar-range"></i> Proje planı</strong>
+            <span>@(Model.Pipeline.CanManage ? "Görevleri sürükleyerek tarihlerini güncelleyin." : "Aşamalar, görevler ve checkpoint'ler aynı takvim üzerinde gösterilir.")</span>
+        </div>
+        @if (hasDependencies)
+        {
+            <div class="timeline-dependency-legend" aria-label="Bağımlılık açıklaması"><span><i class="is-complete"></i>Tamamlanan ön koşul</span><span><i></i>Bekleyen ön koşul</span></div>
+        }
+        <div class="timeline-scale" role="group" aria-label="Zaman ölçeği">
+            <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="timeline" asp-route-scale="day" class="@(Model.Scale == "day" ? "is-active" : "")">Gün</a>
+            <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="timeline" asp-route-scale="week" class="@(Model.Scale == "week" ? "is-active" : "")">Hafta</a>
+            <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="timeline" asp-route-scale="month" class="@(Model.Scale == "month" ? "is-active" : "")">Ay</a>
+        </div>
+    </header>
+
+    <div class="timeline-scroll" tabindex="0" aria-label="Proje zaman çizelgesi">
+        <div class="timeline-sheet" style="width:@(canvasWidth)px">
+            <div class="timeline-header" style="width:@(canvasWidth)px">
+                @foreach (var marker in markerDates)
+                {
+                    var left = (marker - timelineStart).TotalDays * pixelsPerDay;
+                    <span class="timeline-date-label" style="left:@(left.ToString(invariant))px">@(Model.Scale == "month" ? marker.ToString("MMM yyyy") : marker.ToString("dd MMM"))</span>
+                    <span class="timeline-grid-line" style="left:@(left.ToString(invariant))px"></span>
+                }
+                @if (showToday) { <span class="timeline-today-line" style="left:@(todayOffset.ToString(invariant))px"><em>Bugün</em></span> }
+            </div>
+
+            @foreach (var stage in Model.Pipeline.Stages)
+            {
+                var stageTasks = stage.Tasks.Where(x => !x.IsDeleted).OrderBy(x => x.PlannedStartDate ?? x.DueDate).ToList();
+                var stageDatedTasks = stageTasks.Where(x => x.PlannedStartDate.HasValue || x.DueDate.HasValue).ToList();
+                var stageStart = stageDatedTasks.Count > 0 ? stageDatedTasks.Min(x => (x.PlannedStartDate ?? x.DueDate)!.Value.Date) : (DateTime?)null;
+                var stageEnd = stageDatedTasks.Count > 0 ? stageDatedTasks.Max(x => (x.DueDate ?? x.PlannedStartDate)!.Value.Date) : (DateTime?)null;
+                var stageDone = stageTasks.Count(x => x.Status == TMS.Models.TaskStatus.Done);
+                var stageProgress = stageTasks.Count == 0 ? 0 : (int)Math.Round(stageDone * 100d / stageTasks.Count);
+                <div class="timeline-stage-section">
+                    <div class="timeline-row timeline-stage-row"><div class="timeline-chart" style="width:@(canvasWidth)px">
+                        @TimelineGuides(markerDates, timelineStart, pixelsPerDay, showToday, todayOffset)
+                        @if (stageStart.HasValue && stageEnd.HasValue)
+                        {
+                            @TimelineStageBar(stage.Name, stageStart.Value, stageEnd.Value, stageProgress, timelineStart, timelineEnd, pixelsPerDay)
+                        }
+                        else
+                        {
+                            <span class="timeline-stage-unscheduled"><i class="bi bi-layers"></i> @stage.Name <small>Tarih bekliyor</small></span>
+                        }
+                    </div></div>
+                    @foreach (var task in stageTasks)
+                    {
+                        var checkpointName = stage.Checkpoints.FirstOrDefault(x => x.Id == task.PipelineCheckpointId)?.Name;
+                        @TimelineTaskRow(task, stage.Name, checkpointName, timelineStart, timelineEnd, pixelsPerDay, canvasWidth, markerDates, showToday, todayOffset, Model.Pipeline.CanManage)
+                    }
+                    @foreach (var checkpoint in stage.Checkpoints.OrderBy(x => x.SortOrder))
+                    {
+                        var checkpointDate = checkpoint.Tasks.Where(x => !x.IsDeleted && x.DueDate.HasValue).Select(x => x.DueDate!.Value.Date).DefaultIfEmpty().Max();
+                        <div class="timeline-row timeline-checkpoint-row"><div class="timeline-chart" style="width:@(canvasWidth)px">
+                            @TimelineGuides(markerDates, timelineStart, pixelsPerDay, showToday, todayOffset)
+                            @if (checkpointDate != default && checkpointDate >= timelineStart && checkpointDate <= timelineEnd)
+                            {
+                                var left = (checkpointDate - timelineStart).TotalDays * pixelsPerDay;
+                                <span class="timeline-checkpoint-marker @(checkpoint.ApprovedAt.HasValue ? "is-complete" : "")" style="left:@(left.ToString(invariant))px" title="@checkpoint.Name — @checkpointDate.ToString("dd.MM.yyyy")"><span>@checkpoint.Name</span></span>
+                            }
+                            else
+                            {
+                                <span class="timeline-unscheduled"><i class="bi bi-diamond"></i> @checkpoint.Name · Tarih bekliyor</span>
+                            }
+                        </div></div>
+                    }
+                </div>
+            }
+
+            @if (Model.Pipeline.UnassignedTasks.Count > 0)
+            {
+                <div class="timeline-stage-section timeline-unassigned-section">
+                    <div class="timeline-row timeline-stage-row"><div class="timeline-chart" style="width:@(canvasWidth)px">@TimelineGuides(markerDates, timelineStart, pixelsPerDay, showToday, todayOffset)<span class="timeline-stage-unscheduled"><i class="bi bi-inbox"></i> Aşama bekleyenler</span></div></div>
+                    @foreach (var task in Model.Pipeline.UnassignedTasks.OrderBy(x => x.PlannedStartDate ?? x.DueDate))
+                    {
+                        @TimelineTaskRow(task, null, null, timelineStart, timelineEnd, pixelsPerDay, canvasWidth, markerDates, showToday, todayOffset, Model.Pipeline.CanManage)
+                    }
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+<div class="timeline-inspector-layer" data-timeline-inspector-layer hidden>
+    <button type="button" class="timeline-inspector-backdrop" data-timeline-inspector-close aria-label="Görev ayrıntılarını kapat"></button>
+    <aside class="timeline-inspector" role="dialog" aria-modal="true" aria-labelledby="timeline-inspector-title">
+        <header class="timeline-inspector-head">
+            <div><span data-inspector-key>Görev</span><strong data-inspector-status></strong></div>
+            <button type="button" data-timeline-inspector-close aria-label="Kapat"><i class="bi bi-x-lg"></i></button>
+        </header>
+        <div class="timeline-inspector-body">
+            <div class="timeline-inspector-progress"><span><b data-inspector-progress-label>%0</b><small>ilerleme</small></span><div><i data-inspector-progress></i></div></div>
+            <h2 id="timeline-inspector-title" data-inspector-title></h2>
+            <p class="timeline-inspector-location"><i class="bi bi-diagram-3"></i><span data-inspector-location></span></p>
+            <dl class="timeline-inspector-grid">
+                <div><dt>Öncelik</dt><dd data-inspector-priority></dd></div>
+                <div><dt>Sorumlu</dt><dd data-inspector-assignee></dd></div>
+                <div><dt>Başlangıç</dt><dd data-inspector-start></dd></div>
+                <div><dt>Bitiş</dt><dd data-inspector-end></dd></div>
+            </dl>
+            <section class="timeline-inspector-section" data-inspector-description-wrap>
+                <h3>Açıklama</h3><p data-inspector-description></p>
+            </section>
+            <section class="timeline-inspector-section" data-inspector-dependencies-wrap>
+                <h3><i class="bi bi-link-45deg"></i> Ön koşullar</h3><p data-inspector-dependencies></p>
+            </section>
+        </div>
+        <footer class="timeline-inspector-foot"><a data-inspector-link href="#">Görev detayına git <i class="bi bi-arrow-right"></i></a></footer>
+    </aside>
+</div>
+
+@if (Model.Pipeline.CanManage)
+{
+    <details class="timeline-schedule-panel">
+        <summary><i class="bi bi-calendar-range"></i> Tarihleri form ile düzenle</summary>
+        <div class="timeline-schedule-list">
+            @foreach (var task in allTasks.OrderBy(x => x.Title))
+            {
+                <form method="post" asp-page-handler="UpdateSchedule" asp-route-id="@Model.Pipeline.Project.Id" asp-route-taskId="@task.Id" class="timeline-schedule-form" data-task-id="@task.Id">
+                    <a asp-page="/Tasks/Details" asp-route-id="@task.Id">@task.Title</a>
+                    <label>Başlangıç <input type="date" name="plannedStartDate" value="@(task.PlannedStartDate?.ToString("yyyy-MM-dd"))" /></label>
+                    <label>Bitiş <input type="date" name="plannedEndDate" value="@(task.DueDate?.ToString("yyyy-MM-dd"))" /></label>
+                    <input type="hidden" name="scale" value="@Model.Scale" /><button type="submit">Kaydet</button>
+                </form>
+            }
+        </div>
+    </details>
+}
+
+@functions {
+    Microsoft.AspNetCore.Html.IHtmlContent TimelineGuides(IEnumerable<DateTime> markers, DateTime start, double pixelsPerDay, bool showToday, double todayOffset)
+    {
+        var html = new System.Text.StringBuilder();
+        foreach (var marker in markers)
+        {
+            var left = (marker - start).TotalDays * pixelsPerDay;
+            html.Append($"<span class=\"timeline-grid-line\" style=\"left:{left.ToString(System.Globalization.CultureInfo.InvariantCulture)}px\"></span>");
+        }
+        if (showToday) html.Append($"<span class=\"timeline-today-line\" style=\"left:{todayOffset.ToString(System.Globalization.CultureInfo.InvariantCulture)}px\"></span>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+
+    Microsoft.AspNetCore.Html.IHtmlContent TimelineStageBar(string name, DateTime stageStart, DateTime stageEnd, int progress, DateTime timelineStart, DateTime timelineEnd, double pixelsPerDay)
+    {
+        var visibleStart = stageStart < timelineStart ? timelineStart : stageStart;
+        var visibleEnd = stageEnd > timelineEnd ? timelineEnd : stageEnd;
+        var left = (visibleStart - timelineStart).TotalDays * pixelsPerDay;
+        var width = Math.Max(34, (visibleEnd - visibleStart).TotalDays * pixelsPerDay + pixelsPerDay);
+        var culture = System.Globalization.CultureInfo.InvariantCulture;
+        var encodedName = System.Net.WebUtility.HtmlEncode(name);
+        var title = System.Net.WebUtility.HtmlEncode($"{name}: {stageStart:dd.MM.yyyy} – {stageEnd:dd.MM.yyyy}, %{progress}");
+        return new Microsoft.AspNetCore.Html.HtmlString($"<span class=\"timeline-stage-bar\" style=\"left:{left.ToString(culture)}px;width:{width.ToString(culture)}px\" title=\"{title}\"><span class=\"timeline-stage-progress\" style=\"width:{progress}%\"></span><strong>{encodedName}</strong><em>%{progress}</em></span>");
+    }
+
+    Microsoft.AspNetCore.Html.IHtmlContent TimelineTaskRow(TMS.Models.TaskItem task, string? stageName, string? checkpointName, DateTime start, DateTime end, double pixelsPerDay, int width, IEnumerable<DateTime> markers, bool showToday, double todayOffset, bool canManage)
+    {
+        var plannedStart = task.PlannedStartDate?.Date ?? task.DueDate?.Date;
+        var plannedEnd = task.DueDate?.Date ?? task.PlannedStartDate?.Date;
+        var progress = PipelineService.TaskProgress(task.Status);
+        var waitingDependencies = task.PrerequisiteDependencies.Count(x => x.PrerequisiteTask.Status != TMS.Models.TaskStatus.Done);
+        var css = task.Status == TMS.Models.TaskStatus.Done ? "is-done" : plannedEnd.HasValue && plannedEnd.Value < DateTime.Today ? "is-overdue" : task.Status == TMS.Models.TaskStatus.InReview ? "is-review" : task.Status == TMS.Models.TaskStatus.InProgress ? "is-progress" : "is-todo";
+        var statusLabel = task.Status switch { TMS.Models.TaskStatus.InProgress => "Devam ediyor", TMS.Models.TaskStatus.InReview => "İncelemede", TMS.Models.TaskStatus.Done => "Tamamlandı", _ => "Yapılacak" };
+        var priorityLabel = task.Priority switch { TMS.Models.TaskPriority.Low => "Düşük", TMS.Models.TaskPriority.High => "Yüksek", TMS.Models.TaskPriority.Critical => "Kritik", _ => "Normal" };
+        var dependencyNames = string.Join(" • ", task.PrerequisiteDependencies.Select(x => x.PrerequisiteTask.Title));
+        var prerequisiteIds = string.Join(",", task.PrerequisiteDependencies.Select(x => $"{x.PrerequisiteTaskId}:{(x.PrerequisiteTask.Status == TMS.Models.TaskStatus.Done ? 1 : 0)}"));
+        var dataAttributes = $" data-timeline-task data-record-id=\"{task.Id}\" data-prerequisite-ids=\"{prerequisiteIds}\" data-task-key=\"TSK-{task.Id:D5}\" data-title=\"{Encode(task.Title)}\" data-status-label=\"{Encode(statusLabel)}\" data-priority-label=\"{Encode(priorityLabel)}\" data-assignee=\"{Encode(task.AssignedToUser?.FullName ?? "Atanmamış")}\" data-start-label=\"{Encode(plannedStart?.ToString("dd.MM.yyyy") ?? "Planlanmadı")}\" data-end-label=\"{Encode(plannedEnd?.ToString("dd.MM.yyyy") ?? "Planlanmadı")}\" data-stage=\"{Encode(stageName ?? "Aşama bekliyor")}\" data-checkpoint=\"{Encode(checkpointName ?? string.Empty)}\" data-description=\"{Encode(task.Description ?? string.Empty)}\" data-progress=\"{progress}\" data-dependencies=\"{Encode(dependencyNames)}\" data-details-url=\"/Tasks/Details?id={task.Id}\" tabindex=\"0\" role=\"button\"";
+        var html = new System.Text.StringBuilder();
+        html.Append($"<div class=\"timeline-row timeline-task-row\"><div class=\"timeline-chart\" style=\"width:{width}px\">");
+        html.Append(TimelineGuides(markers, start, pixelsPerDay, showToday, todayOffset).ToString());
+        if (plannedStart.HasValue && plannedEnd.HasValue && plannedEnd >= start && plannedStart <= end)
+        {
+            var visibleStart = plannedStart.Value < start ? start : plannedStart.Value;
+            var visibleEnd = plannedEnd.Value > end ? end : plannedEnd.Value;
+            var left = (visibleStart - start).TotalDays * pixelsPerDay;
+            var barWidth = Math.Max(24, (visibleEnd - visibleStart).TotalDays * pixelsPerDay + pixelsPerDay);
+            var culture = System.Globalization.CultureInfo.InvariantCulture;
+            var dependencyText = waitingDependencies > 0 ? $" · {waitingDependencies} ön koşul bekliyor" : string.Empty;
+            var title = System.Net.WebUtility.HtmlEncode($"{task.Title}: {plannedStart:dd.MM.yyyy} – {plannedEnd:dd.MM.yyyy}, %{progress} · {task.AssignedToUser?.FullName ?? "Atanmamış"}{dependencyText}");
+            var taskName = System.Net.WebUtility.HtmlEncode(task.Title);
+            var blockedClass = waitingDependencies > 0 ? " is-blocked" : string.Empty;
+            var dragAttributes = canManage ? $" data-task-id=\"{task.Id}\" data-start=\"{plannedStart:yyyy-MM-dd}\" data-end=\"{plannedEnd:yyyy-MM-dd}\" data-pixels-per-day=\"{pixelsPerDay.ToString(culture)}\" data-left=\"{left.ToString(culture)}\" data-width=\"{width}\"" : string.Empty;
+            var ariaLabel = canManage ? $"{task.Title} ayrıntılarını açın veya tarihlerini sürükleyin" : $"{task.Title} ayrıntılarını açın";
+            html.Append($"<span class=\"timeline-task-bar {css}{blockedClass}{(canManage ? " is-draggable" : "")}\" style=\"left:{left.ToString(culture)}px;width:{barWidth.ToString(culture)}px\" title=\"{title}\" aria-label=\"{Encode(ariaLabel)}\"{dataAttributes}{dragAttributes}><span class=\"timeline-task-progress\" style=\"width:{progress}%\"></span><strong>{taskName}</strong><em>{progress}%</em></span>");
+        }
+        else html.Append($"<span class=\"timeline-unscheduled timeline-task-trigger\" aria-label=\"{Encode(task.Title)} ayrıntılarını açın\"{dataAttributes}><i class=\"bi bi-calendar-x\"></i> {Encode(task.Title)} · Tarih bekliyor</span>");
+        html.Append("</div></div>");
+        return new Microsoft.AspNetCore.Html.HtmlString(html.ToString());
+    }
+
+    string Encode(string value) => System.Net.WebUtility.HtmlEncode(value);
+}

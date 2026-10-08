@@ -1,0 +1,530 @@
+@page
+@inject TMS.Services.AccessService Access
+@model TMS.Pages.Projects.IndexModel
+
+@{
+    ViewData["Title"] = "Projeler";
+    var activeCount = Model.SummaryProjects.Count(x => x.Status == TMS.Models.ProjectStatus.InProgress);
+    var completedCount = Model.SummaryProjects.Count(x => x.Status == TMS.Models.ProjectStatus.Completed);
+    var attentionCount = Model.SummaryProjects.Count(x => x.Status == TMS.Models.ProjectStatus.OnHold
+        || (x.EndDate.HasValue && x.EndDate.Value.Date < DateTime.Today
+            && x.Status != TMS.Models.ProjectStatus.Completed
+            && x.Status != TMS.Models.ProjectStatus.Cancelled));
+}
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="projects-page-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Projeler</strong></nav>
+
+        <h1 class="projects-page-title">Projeler</h1>
+
+        <p class="projects-page-description">
+            Projeleri görüntüleyin, filtreleyin ve genel durumlarını takip edin.
+        </p>
+    </div>
+
+    <div class="projects-header-actions">
+        <div class="view-switcher" aria-label="Proje görünümü">
+            <a asp-page="/Projects/Index" class="is-active"><i class="bi bi-list-ul"></i> Liste</a>
+            <a asp-page="/Kanban/Projects"><i class="bi bi-kanban"></i> Kanban</a>
+            <a asp-page="/Pipeline/Index"><i class="bi bi-diagram-3"></i> Pipeline</a>
+        </div>
+        @if (await Access.CanCreateProjectAsync())
+        {
+            <a asp-page="Create" class="dashboard-action dashboard-action-primary">
+                <i class="bi bi-plus-lg"></i>
+                Yeni Proje
+            </a>
+        }
+    </div>
+</section>
+
+<section class="projects-summary-strip" aria-label="Proje özeti">
+    <a asp-page="Index" class="projects-summary-item @(Model.Statuses.Count == 0 ? "is-active" : string.Empty)">
+        <span class="projects-summary-icon projects-summary-icon-all"><i class="bi bi-folder2-open"></i></span>
+        <span><small>Toplam proje</small><strong>@Model.SummaryProjects.Count</strong></span>
+    </a>
+    <a asp-page="Index" asp-route-Statuses="InProgress" class="projects-summary-item @(Model.Statuses.Contains("InProgress") ? "is-active" : string.Empty)">
+        <span class="projects-summary-icon projects-summary-icon-active"><i class="bi bi-play-circle"></i></span>
+        <span><small>Devam eden</small><strong>@activeCount</strong></span>
+    </a>
+    <a href="?Statuses=OnHold&amp;Statuses=overdue" class="projects-summary-item @(Model.Statuses.Contains("OnHold") || Model.Statuses.Contains("overdue") ? "is-active" : string.Empty)">
+        <span class="projects-summary-icon projects-summary-icon-attention"><i class="bi bi-exclamation-triangle"></i></span>
+        <span><small>Dikkat gereken</small><strong>@attentionCount</strong></span>
+    </a>
+    <a asp-page="Index" asp-route-Statuses="Completed" class="projects-summary-item @(Model.Statuses.Contains("Completed") ? "is-active" : string.Empty)">
+        <span class="projects-summary-icon projects-summary-icon-done"><i class="bi bi-check2-circle"></i></span>
+        <span><small>Tamamlanan</small><strong>@completedCount</strong></span>
+    </a>
+</section>
+
+
+<!-- ======================================================
+     FILTERS
+     ====================================================== -->
+
+<div class="projects-workspace">
+<form method="get" id="filterForm" class="projects-filter-card projects-workspace-filter">
+
+    <div class="projects-filter-main">
+
+        <!-- Search -->
+
+        <div class="projects-search">
+            <i class="bi bi-search"></i>
+
+            <input type="text"
+                   name="Search"
+                   value="@Model.Search"
+                   placeholder="Proje adı ile ara..." />
+        </div>
+
+
+        <details class="compact-filter-more">
+            <summary>
+                <i class="bi bi-sliders"></i>
+                Gelişmiş filtreler
+                @if (Model.StartDate.HasValue || Model.EndDate.HasValue || Model.Statuses.Count > 0)
+                {
+                    <span>@((Model.StartDate.HasValue ? 1 : 0) + (Model.EndDate.HasValue ? 1 : 0) + Model.Statuses.Count)</span>
+                }
+            </summary>
+            <div class="compact-filter-options">
+
+        <!-- Start Date -->
+
+        <div class="projects-date-filter">
+            <i class="bi bi-calendar-event"></i>
+
+            <div>
+                <span>Başlangıç</span>
+
+                <input type="date"
+                       name="StartDate"
+                       value="@Model.StartDate?.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+
+        <!-- End Date -->
+
+        <div class="projects-date-filter">
+            <i class="bi bi-calendar-check"></i>
+
+            <div>
+                <span>Bitiş</span>
+
+                <input type="date"
+                       name="EndDate"
+                       value="@Model.EndDate?.ToString("yyyy-MM-dd")" />
+            </div>
+        </div>
+
+
+        <!-- Status -->
+
+        <div class="projects-status-filter" id="statusDropdownWrapper">
+
+            <button type="button"
+                    id="statusDropdownBtn"
+                    onclick="toggleProjectStatusDropdown()"
+                    class="projects-filter-button">
+
+                <i class="bi bi-funnel"></i>
+
+                <span id="statusDropdownLabel">
+                    @(Model.Statuses.Count > 0
+                                        ? $"{Model.Statuses.Count} durum"
+                                        : "Durum")
+                </span>
+
+                <i class="bi bi-chevron-down projects-filter-chevron"></i>
+            </button>
+
+
+            <div id="statusDropdownMenu" class="projects-status-menu hidden">
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="NotStarted"
+                           @(Model.Statuses.Contains("NotStarted") ? "checked" : "") />
+
+                    <span class="project-status-dot status-neutral"></span>
+                    <span>Başlamadı</span>
+                </label>
+
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="InProgress"
+                           @(Model.Statuses.Contains("InProgress") ? "checked" : "") />
+
+                    <span class="project-status-dot status-info"></span>
+                    <span>Devam Ediyor</span>
+                </label>
+
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="Completed"
+                           @(Model.Statuses.Contains("Completed") ? "checked" : "") />
+
+                    <span class="project-status-dot status-success"></span>
+                    <span>Tamamlandı</span>
+                </label>
+
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="OnHold"
+                           @(Model.Statuses.Contains("OnHold") ? "checked" : "") />
+
+                    <span class="project-status-dot status-warning"></span>
+                    <span>Beklemede</span>
+                </label>
+
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="Cancelled"
+                           @(Model.Statuses.Contains("Cancelled") ? "checked" : "") />
+
+                    <span class="project-status-dot status-danger"></span>
+                    <span>İptal Edildi</span>
+                </label>
+
+
+                <div class="projects-status-separator"></div>
+
+
+                <label class="projects-status-option">
+                    <input type="checkbox"
+                           name="Statuses"
+                           value="overdue"
+                           @(Model.Statuses.Contains("overdue") ? "checked" : "") />
+
+                    <span class="project-status-dot status-danger"></span>
+                    <span>Gecikmiş</span>
+                </label>
+
+            </div>
+        </div>
+
+
+            </div>
+        </details>
+
+        <button type="submit" class="projects-apply-button">
+            Filtrele
+        </button>
+
+
+        @if (Model.HasActiveFilter)
+        {
+            <a asp-page="Index" class="projects-clear-button" title="Filtreleri temizle">
+                <i class="bi bi-x-lg"></i>
+                <span class="filter-clear-label">Filtreleri temizle</span>
+            </a>
+        }
+
+    </div>
+
+
+    @if (Model.HasActiveFilter)
+    {
+        <div class="projects-active-filters">
+
+            <span class="projects-active-label">Aktif filtreler</span>
+
+            @if (!string.IsNullOrEmpty(Model.Search))
+            {
+                <span class="projects-filter-chip">
+                    <i class="bi bi-search"></i>
+                    @Model.Search
+                </span>
+            }
+
+
+            @if (Model.StartDate.HasValue)
+            {
+                <span class="projects-filter-chip">
+                    <i class="bi bi-calendar-event"></i>
+                    @Model.StartDate.Value.ToString("dd.MM.yyyy") sonrası
+                </span>
+            }
+
+
+            @if (Model.EndDate.HasValue)
+            {
+                <span class="projects-filter-chip">
+                    <i class="bi bi-calendar-check"></i>
+                    @Model.EndDate.Value.ToString("dd.MM.yyyy") öncesi
+                </span>
+            }
+
+
+            @foreach (var s in Model.Statuses)
+            {
+                var label = s switch
+                {
+                    "NotStarted" => "Başlamadı",
+                    "InProgress" => "Devam Ediyor",
+                    "Completed" => "Tamamlandı",
+                    "OnHold" => "Beklemede",
+                    "Cancelled" => "İptal Edildi",
+                    "overdue" => "Gecikmiş",
+                    _ => s
+                };
+
+                <span class="projects-filter-chip">
+                    @label
+                </span>
+            }
+
+        </div>
+    }
+
+</form>
+
+
+<!-- ======================================================
+     PROJECT LIST
+     ====================================================== -->
+
+<section class="projects-list-section projects-workspace-list">
+
+    <header class="projects-list-header">
+        <div>
+            <h2>Proje Listesi</h2>
+
+            <span>
+                @Model.Projects.Count proje görüntüleniyor
+            </span>
+        </div>
+
+        @if (Model.HasActiveFilter)
+        {
+            <span class="projects-filter-state">
+                <i class="bi bi-funnel-fill"></i>
+                Filtrelenmiş görünüm
+            </span>
+        }
+    </header>
+
+
+    @if (!Model.Projects.Any())
+    {
+        <div class="projects-empty-state">
+
+            <div class="projects-empty-icon">
+                <i class="bi bi-folder2"></i>
+            </div>
+
+            @if (Model.HasActiveFilter)
+            {
+                <h3>Filtrelere uygun proje bulunamadı</h3>
+
+                <p>
+                    Arama kriterlerini değiştirerek tekrar deneyebilirsiniz.
+                </p>
+
+                <a asp-page="Index" class="dashboard-action dashboard-action-secondary">
+                    Filtreleri Temizle
+                </a>
+            }
+            else
+            {
+                <h3>Henüz proje bulunmuyor</h3>
+
+                <p>
+                    İlk projenizi oluşturarak Dizge'de proje takibine başlayabilirsiniz.
+                </p>
+
+                @if (await Access.CanCreateProjectAsync()) { <a asp-page="Create" class="dashboard-action dashboard-action-primary">
+                    <i class="bi bi-plus-lg"></i>
+                    Yeni Proje
+                </a> }
+            }
+
+        </div>
+    }
+    else
+    {
+        <div class="projects-table-scroll">
+
+            <table class="projects-table">
+
+                <thead>
+                    <tr>
+                        <th>Proje</th>
+                        <th>Durum</th>
+                        <th>Takvim</th>
+                        <th>Sorumlu</th>
+                        <th class="projects-actions-column"></th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var project in Model.Projects)
+                    {
+                        <tr>
+
+                            <td class="projects-name-cell">
+                                <a asp-page="Details"
+                                   asp-route-id="@project.Id"
+                                   class="projects-name-link"
+                                   data-record-preview-trigger
+                                   data-preview-type="Proje"
+                                   data-preview-key="PRJ-@project.Id.ToString("D4")"
+                                   data-preview-title="@project.Name"
+                                   data-preview-status="@GetProjectStatusText(project.Status)"
+                                   data-preview-subtitle="@(project.Department?.Name ?? "Departman yok") · @(project.Category?.Name ?? "Kategori yok")"
+                                   data-preview-description="@project.Description"
+                                   data-preview-meta-1-label="Proje sorumlusu"
+                                   data-preview-meta-1-value="@(project.Manager?.FullName ?? "Atanmamış")"
+                                   data-preview-meta-2-label="Başlangıç"
+                                   data-preview-meta-2-value="@project.StartDate.ToString("dd MMM yyyy")"
+                                   data-preview-meta-3-label="Bitiş"
+                                   data-preview-meta-3-value="@(project.EndDate?.ToString("dd MMM yyyy") ?? "Belirtilmedi")"
+                                   data-preview-meta-4-label="Ekip"
+                                   data-preview-meta-4-value="@project.Members.Count kişi"
+                                   data-preview-detail-url="@Url.Page("/Projects/Details", new { id = project.Id })"
+                                   data-preview-secondary-label="Pipeline"
+                                   data-preview-secondary-url="@Url.Page("/Pipeline/Details", new { id = project.Id })">
+
+                                    <span class="projects-folder-icon">
+                                        <i class="bi bi-folder2"></i>
+                                    </span>
+
+                                    <span class="projects-name-copy">
+                                        <strong>@project.Name</strong>
+                                        <small><span>PRJ-@project.Id.ToString("D4")</span> · @(project.Department?.Name ?? "Departman yok") · @(project.Category?.Name ?? "Kategori yok")</small>
+                                    </span>
+                                </a>
+                            </td>
+
+
+                            <td>
+                                <span class="badge @GetStatusBadgeClass(project.Status)">
+                                    @GetProjectStatusText(project.Status)
+                                </span>
+                            </td>
+
+
+                            <td class="projects-timeline-cell">
+                                <span><i class="bi bi-calendar3"></i> @project.StartDate.ToString("dd MMM yyyy")</span>
+                                <small><i class="bi bi-arrow-right"></i> @(project.EndDate?.ToString("dd MMM yyyy") ?? "Bitiş tarihi yok")</small>
+                            </td>
+
+
+                            <td>
+                                @if (project.Manager != null)
+                                {
+                                    <div class="projects-person">
+                                        <span class="projects-person-avatar">
+                                            @(string.IsNullOrWhiteSpace(project.Manager.FullName)
+                                                                            ? "?"
+                                                                            : project.Manager.FullName.Substring(0, 1).ToUpper())
+                            </span>
+
+                                        <span>@project.Manager.FullName</span>
+                                    </div>
+                                                }
+                                else
+                                {
+                                    <span class="projects-secondary-cell">—</span>
+                                }
+                            </td>
+
+
+                            <td class="projects-row-actions">
+
+                                <a asp-page="Details"
+                                   asp-route-id="@project.Id"
+                                   class="projects-detail-button"
+                                   title="Proje detayları"
+                                   aria-label="@project.Name proje detayları">
+
+                                    <i class="bi bi-arrow-right"></i>
+
+                                </a>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+</div>
+
+
+@functions {
+
+    string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "badge-notstarted",
+        TMS.Models.ProjectStatus.InProgress => "badge-inprogress",
+        TMS.Models.ProjectStatus.Completed => "badge-completed",
+        TMS.Models.ProjectStatus.OnHold => "badge-onhold",
+        TMS.Models.ProjectStatus.Cancelled => "badge-cancelled",
+        _ => "badge-default"
+    };
+
+
+    string GetProjectStatusText(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "Başlamadı",
+        TMS.Models.ProjectStatus.InProgress => "Devam Ediyor",
+        TMS.Models.ProjectStatus.Completed => "Tamamlandı",
+        TMS.Models.ProjectStatus.OnHold => "Beklemede",
+        TMS.Models.ProjectStatus.Cancelled => "İptal Edildi",
+        _ => status.ToString()
+    };
+
+}
+
+
+@section Scripts {
+
+    <script>
+
+        function toggleProjectStatusDropdown() {
+            const menu = document.getElementById('statusDropdownMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        document.addEventListener('click', function (e) {
+            const wrapper = document.getElementById('statusDropdownWrapper');
+
+            if (wrapper && !wrapper.contains(e.target)) {
+                document.getElementById('statusDropdownMenu').classList.add('hidden');
+            }
+        });
+
+        document.querySelectorAll('#statusDropdownMenu input[type=checkbox]').forEach(function (cb) {
+            cb.addEventListener('change', function () {
+                document.getElementById('filterForm').submit();
+            });
+        });
+
+    </script>
+
+}

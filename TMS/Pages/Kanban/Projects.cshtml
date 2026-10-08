@@ -1,0 +1,150 @@
+@page
+@inject TMS.Services.AccessService Access
+@model TMS.Pages.Kanban.ProjectsModel
+@{
+    ViewData["Title"] = "Proje Kanbanı";
+    var today = DateTime.Today;
+    var columns = new[]
+    {
+        (Status: TMS.Models.ProjectStatus.NotStarted, Label: "Başlamadı", Tone: "todo", Icon: "bi-circle"),
+        (Status: TMS.Models.ProjectStatus.InProgress, Label: "Devam Ediyor", Tone: "progress", Icon: "bi-play-circle"),
+        (Status: TMS.Models.ProjectStatus.OnHold, Label: "Beklemede", Tone: "hold", Icon: "bi-pause-circle"),
+        (Status: TMS.Models.ProjectStatus.Completed, Label: "Tamamlandı", Tone: "done", Icon: "bi-check-circle"),
+        (Status: TMS.Models.ProjectStatus.Cancelled, Label: "İptal", Tone: "cancelled", Icon: "bi-x-circle")
+    };
+}
+
+<section class="kanban-page-header project-kanban-header">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><strong>Kanban</strong></nav>
+        <h1 class="kanban-page-title">Proje Kanbanı</h1>
+        <p class="kanban-page-description">Projeleri durumlarına göre izleyin ve karttan ayrıntılara ulaşın.</p>
+    </div>
+    <div class="kanban-page-actions">
+        <div class="view-switcher" aria-label="Proje görünümü">
+            <a asp-page="/Projects/Index"><i class="bi bi-list-ul"></i> Liste</a>
+            <a asp-page="/Kanban/Projects" class="is-active"><i class="bi bi-kanban"></i> Kanban</a>
+            <a asp-page="/Pipeline/Index"><i class="bi bi-diagram-3"></i> Pipeline</a>
+        </div>
+        @if (await Access.CanCreateProjectAsync())
+        {
+            <a asp-page="/Projects/Create" class="dashboard-action dashboard-action-primary"><i class="bi bi-plus-lg"></i> Yeni Proje</a>
+        }
+        @if (Model.CanMoveProjects)
+        {
+            <span class="project-kanban-admin-note"><i class="bi bi-arrows-move"></i> Durumları sürükleyerek değiştirin</span>
+        }
+    </div>
+</section>
+
+<p class="task-board-feedback" data-project-kanban-feedback role="status" aria-live="polite"></p>
+
+<section class="project-kanban-shell" data-project-kanban data-update-url="@Url.Page("/Kanban/Projects", "UpdateStatus")">
+    <div class="project-kanban-board" aria-label="Proje Kanbanı">
+        @foreach (var column in columns)
+        {
+            var projects = Model.Projects.Where(x => x.Status == column.Status).ToList();
+            <section class="project-kanban-column project-kanban-column-@column.Tone">
+                <header>
+                    <div><i class="bi @column.Icon"></i><h2>@column.Label</h2></div>
+                    <span data-project-counter="@column.Status">@projects.Count</span>
+                </header>
+                <div class="project-kanban-list" data-project-status="@column.Status">
+                    @foreach (var project in projects)
+                    {
+                        var isOverdue = project.EndDate.HasValue && project.EndDate.Value.Date < today
+                            && project.Status is not TMS.Models.ProjectStatus.Completed and not TMS.Models.ProjectStatus.Cancelled;
+                        var doneCount = project.Tasks.Count(x => x.Status == TMS.Models.TaskStatus.Done);
+                        var taskCount = project.Tasks.Count;
+                        var progress = taskCount == 0 ? 0 : (int)Math.Round(doneCount * 100d / taskCount);
+                        var members = project.Members.Select(x => x.User).Where(x => x is not null).Take(3).ToList();
+                        var memberNames = string.Join(", ", project.Members.Select(x => x.User?.FullName).Where(x => !string.IsNullOrWhiteSpace(x)));
+                        var detailUrl = Url.Page("/Projects/Details", new { id = project.Id }) ?? $"/Projects/Details/{project.Id}";
+                        var pipelineUrl = Url.Page("/Pipeline/Details", new { id = project.Id }) ?? $"/Pipeline/Details?id={project.Id}";
+
+                        <article class="project-kanban-card @(isOverdue ? "is-overdue" : "")"
+                                 data-project-id="@project.Id"
+                                 data-status="@project.Status"
+                                 data-status-label="@column.Label"
+                                 data-title="@project.Name"
+                                 data-description="@(project.Description ?? "Açıklama eklenmemiş.")"
+                                 data-department="@(project.Department?.Name ?? "Departman yok")"
+                                 data-manager="@(project.Manager?.FullName ?? "Sorumlu atanmamış")"
+                                 data-start="@project.StartDate.ToString("dd.MM.yyyy")"
+                                 data-end="@(project.EndDate?.ToString("dd.MM.yyyy") ?? "Tarih yok")"
+                                 data-task-progress="@doneCount / @taskCount"
+                                 data-progress="@progress"
+                                 data-members="@(string.IsNullOrWhiteSpace(memberNames) ? "Ekip üyesi yok" : memberNames)"
+                                 data-details-url="@detailUrl"
+                                 data-pipeline-url="@pipelineUrl"
+                                 data-can-move="@(Model.CanMoveProjects ? "true" : "false")">
+                            <div class="project-kanban-card-topline">
+                                <span>PRJ-@project.Id.ToString("D4")</span>
+                                @if (isOverdue) { <span class="task-board-date-state is-overdue">Gecikmiş</span> }
+                            </div>
+                            <button type="button" class="project-kanban-title" data-project-open-detail>@project.Name</button>
+                            <div class="project-kanban-subtitle"><i class="bi bi-building"></i>@(project.Department?.Name ?? "Departman yok")</div>
+                            <div class="project-kanban-progress">
+                                <div><span>Görev ilerlemesi</span><strong>@progress%</strong></div>
+                                <div class="project-kanban-progress-track"><span style="width:@progress%"></span></div>
+                            </div>
+                            <footer>
+                                <div class="project-kanban-avatars">
+                                    @foreach (var member in members)
+                                    {
+                                        var initials = string.Concat(member!.FullName.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                                            .Where(x => !x.StartsWith('[')).Take(2).Select(x => char.ToUpperInvariant(x[0])));
+                                        <span title="@member.FullName">@(string.IsNullOrWhiteSpace(initials) ? "?" : initials)</span>
+                                    }
+                                </div>
+                                <span><i class="bi bi-calendar3"></i>@(project.EndDate?.ToString("dd.MM") ?? "—")</span>
+                            </footer>
+                        </article>
+                    }
+                    <div class="task-board-empty" data-project-empty @(projects.Count > 0 ? "hidden" : null)>
+                        <i class="bi bi-inbox"></i><span>Bu durumda proje yok</span>
+                    </div>
+                </div>
+            </section>
+        }
+    </div>
+
+    <div class="project-drawer-layer" data-project-drawer-layer hidden>
+        <aside class="project-drawer" data-project-drawer aria-hidden="true" aria-labelledby="projectDrawerTitle">
+            <header>
+                <button type="button" data-project-drawer-close aria-label="Kapat"><i class="bi bi-x-lg"></i></button>
+                <div><span data-project-drawer-key></span><span data-project-drawer-status></span></div>
+            </header>
+            <div class="project-drawer-body">
+                <div class="project-drawer-heading">
+                    <span>PROJE DETAYI</span>
+                    <h2 id="projectDrawerTitle" data-project-drawer-title></h2>
+                    <p data-project-drawer-department></p>
+                </div>
+                <div class="project-drawer-progress">
+                    <div><span>Görev ilerlemesi</span><strong data-project-drawer-progress></strong></div>
+                    <div><span data-project-drawer-progress-bar></span></div>
+                </div>
+                <dl class="project-drawer-meta">
+                    <div><dt>Proje sorumlusu</dt><dd data-project-drawer-manager></dd></div>
+                    <div><dt>Tarih aralığı</dt><dd data-project-drawer-dates></dd></div>
+                    <div><dt>Görevler</dt><dd data-project-drawer-tasks></dd></div>
+                    <div><dt>Ekip</dt><dd data-project-drawer-members></dd></div>
+                </dl>
+                <section><h3>Açıklama</h3><p data-project-drawer-description></p></section>
+            </div>
+            <footer>
+                <a href="#" class="dashboard-action" data-project-drawer-pipeline><i class="bi bi-diagram-3"></i> Pipeline</a>
+                <a href="#" class="dashboard-action dashboard-action-primary" data-project-drawer-details>Projeyi aç <i class="bi bi-arrow-right"></i></a>
+            </footer>
+        </aside>
+        <button type="button" class="project-drawer-backdrop" data-project-drawer-close aria-label="Proje ayrıntılarını kapat"></button>
+    </div>
+</section>
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="~/js/project-kanban.js" asp-append-version="true"></script>
+}

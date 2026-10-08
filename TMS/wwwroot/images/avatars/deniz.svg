@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Deniz Yılmaz profil görseli">
+  <defs><linearGradient id="b" x2="1" y2="1"><stop stop-color="#d8f1ed"/><stop offset="1" stop-color="#87cfc5"/></linearGradient></defs>
+  <rect width="96" height="96" rx="48" fill="url(#b)"/><circle cx="48" cy="40" r="20" fill="#e6b28c"/>
+  <path d="M27 41c0-19 9-28 22-28 14 0 23 10 23 28-5-3-9-9-11-17-8 8-18 12-34 13z" fill="#263b3c"/>
+  <path d="M17 96c2-24 13-35 31-35s29 11 31 35" fill="#087f78"/><path d="M39 61h18l-9 13z" fill="#f8faf6"/>
+  <circle cx="40" cy="40" r="2" fill="#263b3c"/><circle cx="56" cy="40" r="2" fill="#263b3c"/><path d="M42 50c4 3 8 3 12 0" fill="none" stroke="#9c5849" stroke-linecap="round" stroke-width="2"/>
+</svg>

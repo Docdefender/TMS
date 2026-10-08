@@ -1,0 +1,238 @@
+@page
+@model TMS.Pages.Account.LoginModel
+
+@{
+    ViewData["Title"] = "Giriş Yap";
+}
+
+
+<div class="login-shell">
+
+    <div class="login-brand-panel">
+
+        <div class="login-brand-content">
+
+            <div class="login-brand-mark">
+
+                <img src="~/images/dizge-mark.svg"
+                     alt="Dizge"
+                     class="login-brand-logo" />
+
+            </div>
+
+
+            <div class="login-brand-name">
+                Dizge
+            </div>
+
+
+            <div class="login-brand-line"></div>
+
+
+            <h1>
+                Projelerinizi ve görevlerinizi tek bir sistemde yönetin.
+            </h1>
+
+
+            <p>
+                Ekiplerinizi, projelerinizi ve iş akışlarınızı düzenli,
+                izlenebilir ve güvenli bir yapı altında bir araya getirin.
+            </p>
+
+
+            <div class="login-brand-pattern"
+                 aria-hidden="true">
+
+                <span></span>
+                <span></span>
+                <span></span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="login-form-panel">
+
+        <div class="login-form-container">
+
+            <div class="login-mobile-brand">
+
+                <img src="~/images/dizge-mark.svg"
+                     alt="Dizge" />
+
+                <strong>Dizge</strong>
+
+            </div>
+
+
+            <div class="login-heading">
+
+                <nav class="page-breadcrumb" aria-label="Sayfa yolu"><span>Dizge</span><i class="bi bi-chevron-right"></i><strong>Giriş</strong></nav>
+
+
+                <h2>
+                    Hesabınıza giriş yapın
+                </h2>
+
+
+                <p>
+                    Dizge çalışma alanına devam etmek için bilgilerinizi girin.
+                </p>
+
+            </div>
+
+
+            <form method="post"
+                  class="login-form">
+
+                <div asp-validation-summary="ModelOnly"
+                     class="form-validation-summary">
+                </div>
+
+
+                <!-- Email -->
+
+                <div class="form-field">
+
+                    <label asp-for="Input.Email">
+                        E-posta
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-envelope"></i>
+
+
+                        <input asp-for="Input.Email"
+                               class="form-control"
+                               placeholder="ornek@sirket.com"
+                               autocomplete="email" />
+
+                    </div>
+
+
+                    <span asp-validation-for="Input.Email"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Password -->
+
+                <div class="form-field">
+
+                    <label asp-for="Input.Password">
+                        Şifre
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-lock"></i>
+
+
+                        <input asp-for="Input.Password"
+                               type="password"
+                               class="form-control"
+                               placeholder="Şifrenizi girin"
+                               autocomplete="current-password" />
+
+                    </div>
+
+
+                    <span asp-validation-for="Input.Password"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Remember -->
+
+                <div class="login-options">
+
+                    <label class="login-remember">
+
+                        <input asp-for="Input.RememberMe" />
+
+                        <span class="login-checkbox">
+                            <i class="bi bi-check"></i>
+                        </span>
+
+                        <span>
+                            Beni hatırla
+                        </span>
+
+                    </label>
+
+                </div>
+
+
+                <button type="submit"
+                        class="login-submit">
+
+                    <span>
+                        Giriş Yap
+                    </span>
+
+                    <i class="bi bi-arrow-right"></i>
+
+                </button>
+
+            </form>
+
+            @if (Model.ShowDemoLogin)
+            {
+                <section class="login-demo" aria-labelledby="demoLoginTitle">
+                    <div class="login-demo-divider"><span>veya yerel demo ile</span></div>
+                    <h3 id="demoLoginTitle">Rol seçerek hızlı giriş</h3>
+                    <p>Bu seçenekler yalnızca yerel geliştirme ortamında görünür.</p>
+                    <div class="login-demo-actions">
+                        <form method="post" asp-page-handler="Demo">
+                            <button type="submit" name="profile" value="admin" class="login-demo-button">
+                                <i class="bi bi-shield-lock" aria-hidden="true"></i>
+                                <span><strong>Admin</strong><small>Tüm yetkiler</small></span>
+                            </button>
+                        </form>
+                        <form method="post" asp-page-handler="Demo">
+                            <button type="submit" name="profile" value="manager" class="login-demo-button">
+                                <i class="bi bi-person-badge" aria-hidden="true"></i>
+                                <span><strong>Manager</strong><small>Departman yönetimi</small></span>
+                            </button>
+                        </form>
+                        <form method="post" asp-page-handler="Demo">
+                            <button type="submit" name="profile" value="member" class="login-demo-button">
+                                <i class="bi bi-person" aria-hidden="true"></i>
+                                <span><strong>Kullanıcı</strong><small>Member görünümü</small></span>
+                            </button>
+                        </form>
+                    </div>
+                </section>
+            }
+
+
+            <div class="login-security-note">
+
+                <i class="bi bi-shield-check"></i>
+
+                <span>
+                    Bu alan yalnızca yetkili kullanıcıların erişimine açıktır.
+                </span>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

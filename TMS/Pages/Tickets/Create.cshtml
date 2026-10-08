@@ -1,0 +1,80 @@
+@page
+@model TMS.Pages.Tickets.CreateModel
+@using TMS.Models
+@{
+    ViewData["Title"] = "Ticket oluştur";
+}
+<div class="ticket-page ticket-create-page">
+    <header class="ticket-page-header">
+        <div>
+            <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Tickets/Index">Ticket'lar</a><i class="bi bi-chevron-right"></i><strong>Yeni Ticket</strong></nav>
+            <h1>Yeni Ticket</h1>
+            <p>Talep sahibini ve ilk mesajı kaydedin; atanmayan kayıtlar çalışma havuzuna düşer.</p>
+        </div>
+    </header>
+    <form method="post" class="ticket-create-layout" data-ticket-create>
+        <main class="ticket-stack">
+            <section class="ticket-panel ticket-create-section">
+                <div class="ticket-step-heading"><span>1</span><div><h2>Talep sahibi</h2><p>Ticket'ın adına açılacağı kullanıcıyı seçin.</p></div></div>
+                <div class="ticket-panel-body ticket-form">
+                    <div asp-validation-summary="All" class="form-validation-summary"></div>
+                    <div class="ticket-field"><label asp-for="RequesterUserId">Talep sahibi</label><select asp-for="RequesterUserId" asp-items="Model.Users" class="form-select" required data-ticket-requester><option value="">Kullanıcı seçiniz</option></select></div>
+                    <div class="ticket-field"><label asp-for="SupportDepartmentId">Takip eden departman</label><select asp-for="SupportDepartmentId" asp-items="Model.Departments" class="form-select" required data-ticket-department></select><small>Yeni Ticket otomatik olarak bu çalışma havuzuna eklenir.</small></div>
+                </div>
+            </section>
+            <section class="ticket-panel ticket-create-section">
+                <div class="ticket-step-heading"><span>2</span><div><h2>Talep detayı</h2><p>Kısa bir başlık ve açıklayıcı ilk mesaj yazın.</p></div></div>
+                <div class="ticket-panel-body ticket-form">
+                    <div class="ticket-field"><label asp-for="Subject">Konu</label><input asp-for="Subject" class="form-control" maxlength="200" required placeholder="Kısa ve açıklayıcı bir başlık" data-ticket-subject /></div>
+                    <div class="ticket-field"><label asp-for="Priority">Öncelik</label><select asp-for="Priority" class="form-select" data-ticket-priority><option value="Low">Düşük · 5 gün</option><option value="Normal">Normal · 3 gün</option><option value="High">Yüksek · 24 saat</option><option value="Critical">Kritik · 8 saat</option></select><small>Çözüm hedefi seçilen önceliğe göre otomatik hesaplanır.</small></div>
+                    <div class="ticket-field"><label asp-for="Body">İlk mesaj</label><textarea asp-for="Body" class="form-control ticket-create-message" rows="9" required placeholder="Sorunu veya talebi ayrıntılarıyla açıklayın..." data-ticket-body></textarea><small>İlgili sistem, beklenen sonuç ve varsa hata adımlarını ekleyin.</small></div>
+                </div>
+            </section>
+            <div class="ticket-create-actions">
+                <a asp-page="/Tickets/Index" class="project-action-button project-action-secondary">Vazgeç</a>
+                <button type="submit" class="project-action-button ticket-primary-dark"><i class="bi bi-send"></i> Ticket oluştur</button>
+            </div>
+        </main>
+        <aside class="ticket-create-aside">
+            <section class="ticket-panel">
+                <div class="ticket-panel-heading"><h2>Özet</h2></div>
+                <dl class="ticket-create-summary">
+                    <div><dt>Konu</dt><dd data-summary-subject>—</dd></div>
+                    <div><dt>Talep sahibi</dt><dd data-summary-requester>—</dd></div>
+                    <div><dt>Takip eden ekip</dt><dd data-summary-department>—</dd></div>
+                    <div><dt>İlk durum</dt><dd><span class="ticket-pill ticket-status-open">Açık</span></dd></div>
+                    <div><dt>Öncelik</dt><dd data-summary-priority>Normal · 3 gün</dd></div>
+                </dl>
+            </section>
+            <section class="ticket-panel ticket-next-steps">
+                <div class="ticket-panel-heading"><h2>Sonraki adımlar</h2></div>
+                <ol>
+                    <li><i class="bi bi-inbox"></i><span><strong>Çalışma havuzuna eklenir</strong><small>Atama yapılana kadar havuzda bekler.</small></span></li>
+                    <li><i class="bi bi-person-check"></i><span><strong>Sorumlu atanır</strong><small>Destek ekibi Ticket'ı üstlenir.</small></span></li>
+                    <li><i class="bi bi-chat-left-text"></i><span><strong>Yazışma başlar</strong><small>Yanıtlar aynı Ticket altında tutulur.</small></span></li>
+                </ol>
+            </section>
+        </aside>
+    </form>
+</div>
+
+@section Scripts {
+    <script>
+        (() => {
+            const root = document.querySelector('[data-ticket-create]');
+            if (!root) return;
+            const subject = root.querySelector('[data-ticket-subject]');
+            const requester = root.querySelector('[data-ticket-requester]');
+            const department = root.querySelector('[data-ticket-department]');
+            const priority = root.querySelector('[data-ticket-priority]');
+            const update = () => {
+                root.querySelector('[data-summary-subject]').textContent = subject.value.trim() || '—';
+                root.querySelector('[data-summary-requester]').textContent = requester.selectedOptions[0]?.text || '—';
+                root.querySelector('[data-summary-department]').textContent = department.selectedOptions[0]?.text || '—';
+                root.querySelector('[data-summary-priority]').textContent = priority.selectedOptions[0]?.text || '—';
+            };
+            [subject, requester, department, priority].forEach(element => element.addEventListener('input', update));
+            update();
+        })();
+    </script>
+}

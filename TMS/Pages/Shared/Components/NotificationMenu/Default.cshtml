@@ -1,0 +1,20 @@
+@model TMS.ViewComponents.NotificationMenuModel
+<div class="topbar-notifications" data-notification-menu>
+    <button type="button" class="topbar-icon-btn" aria-label="Bildirimleri aç" aria-haspopup="true" aria-expanded="false" data-notification-menu-toggle title="Bildirimler">
+        <i class="bi bi-bell"></i>
+        @if (Model.UnreadCount > 0) { <span class="topbar-notification-badge">@(Model.UnreadCount > 99 ? "99+" : Model.UnreadCount)</span> }
+    </button>
+    <div class="topbar-notification-panel" data-notification-menu-panel hidden>
+        <header class="topbar-notification-header"><div><strong>Bildirimler</strong><small>Atamalar ve önemli gelişmeler</small></div><span>@Model.UnreadCount yeni</span></header>
+        @if (Model.Items.Count == 0)
+        { <div class="topbar-notification-empty"><span><i class="bi bi-bell-slash"></i></span><strong>Yeni bildiriminiz yok</strong><p>Atamalar ve önemli durum değişiklikleri burada listelenecek.</p></div> }
+        else
+        {
+            <div class="topbar-notification-list">
+            @foreach (var item in Model.Items)
+            { <a href="@(item.Url ?? Url.Page("/Notifications/Index"))" class="topbar-notification-item @(item.ReadAt == null ? "is-unread" : "")"><span><i class="bi @(item.Type == "Assignment" ? "bi-person-check" : "bi-bell")"></i></span><div><strong>@item.Title</strong><p>@item.Message</p><small>@item.CreatedAt.ToLocalTime().ToString("dd MMM · HH:mm")</small></div></a> }
+            </div>
+            <a asp-page="/Notifications/Index" class="topbar-notification-all">Tüm bildirimleri gör</a>
+        }
+    </div>
+</div>

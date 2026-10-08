@@ -1,0 +1,353 @@
+@page
+@model TMS.Pages.Pipeline.DetailsModel
+@using TMS.Services
+@{
+    ViewData["Title"] = $"{Model.Pipeline.Project.Name} Pipeline";
+    var pipelineOpen = Model.Pipeline.AllTasks.Count(x => x.Status != TMS.Models.TaskStatus.Done);
+    var pipelineOverdue = Model.Pipeline.AllTasks.Count(x => x.Status != TMS.Models.TaskStatus.Done && x.DueDate.HasValue && x.DueDate.Value.Date < DateTime.Today);
+    var pipelineBlocked = Model.Pipeline.AllTasks.Count(x => x.Status != TMS.Models.TaskStatus.Done && x.PrerequisiteDependencies.Any(d => d.PrerequisiteTask.Status != TMS.Models.TaskStatus.Done));
+}
+
+<div class="pipeline-detail-head pipeline-command-head @(Model.ViewMode == "timeline" ? "is-timeline" : "")">
+    <div>
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Details" asp-route-id="@Model.Pipeline.Project.Id">PRJ-@Model.Pipeline.Project.Id.ToString("D4")</a><i class="bi bi-chevron-right"></i><strong>Pipeline</strong></nav>
+        <span class="pipeline-command-label">PROJE PIPELINE'I</span>
+        <h1>@Model.Pipeline.Project.Name</h1>
+        <p>@(Model.Pipeline.Project.Department?.Name ?? "Departman yok") · PRJ-@Model.Pipeline.Project.Id.ToString("D4") · Görevler tamamlandıkça otomatik ilerler</p>
+    </div>
+    <div class="pipeline-head-kpis">
+        <div><small>Açık</small><strong>@pipelineOpen</strong></div>
+        <div><small>Tamamlanan</small><strong>@Model.Pipeline.DoneTaskCount</strong></div>
+        <div class="@(pipelineOverdue > 0 ? "is-attention" : "")"><small>Gecikmiş</small><strong>@pipelineOverdue</strong></div>
+        <div class="@(pipelineBlocked > 0 ? "is-danger" : "")"><small>Engellenen</small><strong>@pipelineBlocked</strong></div>
+        <div class="pipeline-progress-ring" style="--pipeline-progress:@Model.Pipeline.Progress"><strong>%@Model.Pipeline.Progress</strong><span>@Model.Pipeline.DoneTaskCount / @Model.Pipeline.TaskCount görev</span></div>
+    </div>
+</div>
+
+<div class="pipeline-view-toolbar">
+    <nav class="pipeline-view-tabs" aria-label="Pipeline görünümü">
+        <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="timeline" asp-route-scale="@Model.Scale" class="@(Model.ViewMode == "timeline" ? "is-active" : "")"><i class="bi bi-bar-chart-steps"></i> Zaman Çizelgesi</a>
+        <a asp-page="Details" asp-route-id="@Model.Pipeline.Project.Id" asp-route-viewMode="history" asp-route-scale="@Model.Scale" class="@(Model.ViewMode == "history" ? "is-active" : "")"><i class="bi bi-clock-history"></i> Geçmiş</a>
+    </nav>
+    <a asp-page="Details"
+       asp-route-id="@Model.Pipeline.Project.Id"
+       asp-route-viewMode="flow"
+       asp-route-scale="@Model.Scale"
+       class="pipeline-flow-launch">
+        <i class="bi bi-diagram-3" aria-hidden="true"></i>
+        Akışı yönet
+    </a>
+</div>
+
+@if (TempData["PipelineMessage"] is string message)
+{
+    <div class="pipeline-message" role="status">@message</div>
+}
+
+@if (Model.ViewMode == "history")
+{
+    <partial name="_History" model="@Model" />
+}
+else
+{
+@if (Model.ViewMode == "flow")
+{
+    <header class="pipeline-flow-workspace-header" role="dialog" aria-modal="true" aria-labelledby="pipelineFlowTitle">
+        <div>
+            <span class="pipeline-command-label">PIPELINE YAPISI</span>
+            <h2 id="pipelineFlowTitle">Akış çalışma alanı</h2>
+            <p>Aşamaları, checkpoint'leri, görev yerleşimini ve proje bağlantılarını tek alanda yönetin.</p>
+        </div>
+        <a asp-page="Details"
+           asp-route-id="@Model.Pipeline.Project.Id"
+           asp-route-viewMode="timeline"
+           asp-route-scale="@Model.Scale"
+           class="pipeline-flow-close"
+           aria-label="Akış çalışma alanını kapat"
+           data-pipeline-flow-close>
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </a>
+    </header>
+}
+@if (Model.ViewMode == "flow")
+{
+<section class="pipeline-relations">
+    <header>
+        <div><span class="dashboard-eyebrow">PROJE BAĞLANTILARI</span><h2>İlişkiler ve bağımlılıklar</h2></div>
+        <span>@Model.Pipeline.Relations.Count bağlantı</span>
+    </header>
+    @if (Model.Pipeline.Relations.Count > 0)
+    {
+        <div class="pipeline-relation-center">
+            <span>MEVCUT PROJE</span>
+            <strong>@Model.Pipeline.Project.Name</strong>
+            <small>%@Model.Pipeline.Progress tamamlandı</small>
+        </div>
+        <div class="pipeline-relation-list">
+            @foreach (var relation in Model.Pipeline.Relations)
+            {
+                var isSource = relation.SourceProjectId == Model.Pipeline.Project.Id;
+                var other = isSource ? relation.TargetProject : relation.SourceProject;
+                var dependency = relation.Type == TMS.Models.ProjectRelationType.Dependency;
+                var blocked = dependency && isSource && other.Status != TMS.Models.ProjectStatus.Completed;
+                <article class="pipeline-relation @(blocked ? "is-blocked" : "")">
+                    <i class="bi @(dependency ? "bi-link-45deg" : "bi-diagram-2")"></i>
+                    <div class="pipeline-grow">
+                        <a asp-page="Details" asp-route-id="@other.Id">@other.Name</a>
+                        <span>
+                            @if (!dependency) { <text>İlişkili proje</text> }
+                            else if (isSource && blocked) { <text>@(relation.BlockingCheckpoint?.Name ?? "Genel proje") için bekleniyor · Proje tamamlanmadı</text> }
+                            else if (isSource) { <text>@(relation.BlockingCheckpoint?.Name ?? "Genel proje") bağımlılığı tamamlandı</text> }
+                            else { <text>Bu projeye bağlı sonraki proje</text> }
+                        </span>
+                    </div>
+                    @if (blocked) { <strong class="pipeline-blocked-badge">Bekliyor</strong> }
+                    @if (Model.Pipeline.CanManage)
+                    {
+                        <form method="post" asp-page-handler="RemoveRelation" asp-route-id="@Model.Pipeline.Project.Id" asp-route-relationId="@relation.Id">
+                            <button type="submit" class="pipeline-icon-button" title="Bağlantıyı kaldır" aria-label="@other.Name bağlantısını kaldır"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                    }
+                    @if (Model.Pipeline.CanManage && dependency && isSource)
+                    {
+                        <form method="post" asp-page-handler="UpdateRelationCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-relationId="@relation.Id" class="pipeline-relation-checkpoint">
+                            <select name="relationCheckpointId" aria-label="@other.Name bağımlılığının checkpoint'i">
+                                <option value="">Genel proje bağımlılığı</option>
+                                @foreach (var stage in Model.Pipeline.Stages)
+                                {
+                                    <optgroup label="@stage.Name">
+                                        @foreach (var checkpoint in stage.Checkpoints.OrderBy(x => x.SortOrder))
+                                        {
+                                            <option value="@checkpoint.Id" selected="@(relation.BlockingCheckpointId == checkpoint.Id)">@checkpoint.Name</option>
+                                        }
+                                    </optgroup>
+                                }
+                            </select>
+                            <button type="submit" title="Checkpoint bağlantısını kaydet"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                    }
+                </article>
+            }
+        </div>
+    }
+    else
+    {
+        <p class="pipeline-no-relation">Bu projeye bağlı başka bir proje yok.</p>
+    }
+    @if (Model.Pipeline.CanManage && Model.Pipeline.RelationCandidates.Count > 0)
+    {
+        <details class="pipeline-relation-create">
+            <summary><i class="bi bi-plus-circle"></i> Proje bağlantısı ekle</summary>
+            <form method="post" asp-page-handler="AddRelation" asp-route-id="@Model.Pipeline.Project.Id" class="pipeline-inline-form">
+                <div class="pipeline-grow"><label asp-for="RelationTargetProjectId">Proje</label><select asp-for="RelationTargetProjectId">
+                    @foreach (var project in Model.Pipeline.RelationCandidates) { <option value="@project.Id">@project.Name</option> }
+                </select></div>
+                <div><label asp-for="RelationType">Bağlantı türü</label><select asp-for="RelationType">
+                    <option value="Related">İlişkili proje</option>
+                    <option value="Dependency">Bu proje seçilen projeye bağlı</option>
+                </select></div>
+                <div><label asp-for="RelationCheckpointId">Bağlı checkpoint</label><select asp-for="RelationCheckpointId">
+                    <option value="">Genel proje bağımlılığı</option>
+                    @foreach (var stage in Model.Pipeline.Stages)
+                    {
+                        <optgroup label="@stage.Name">
+                            @foreach (var checkpoint in stage.Checkpoints.OrderBy(x => x.SortOrder)) { <option value="@checkpoint.Id">@checkpoint.Name</option> }
+                        </optgroup>
+                    }
+                </select></div>
+                <button type="submit">Bağlantı ekle</button>
+            </form>
+            <p>Bağımlılık, seçilen proje tamamlanana kadar bu projeyi bekliyor olarak gösterir.</p>
+        </details>
+    }
+</section>
+}
+
+@if (Model.ViewMode == "timeline")
+{
+    <partial name="_Timeline" model="@Model" />
+}
+else
+{
+
+@if (Model.Pipeline.CanManage)
+{
+    <details class="pipeline-create-panel">
+        <summary><i class="bi bi-plus-circle"></i> Yeni aşama ekle</summary>
+        <form method="post" asp-page-handler="AddStage" asp-route-id="@Model.Pipeline.Project.Id" class="pipeline-inline-form">
+            <div><label asp-for="StageName">Aşama adı</label><input asp-for="StageName" /></div>
+            <div class="pipeline-grow"><label asp-for="StageDescription">Açıklama</label><input asp-for="StageDescription" /></div>
+            <button type="submit">Aşama ekle</button>
+        </form>
+        <span asp-validation-for="StageName" class="text-danger"></span>
+    </details>
+}
+
+<div class="pipeline-stage-list">
+    @foreach (var stage in Model.Pipeline.Stages)
+    {
+        var stageTasks = stage.Tasks.Where(x => !x.IsDeleted).OrderBy(x => x.DueDate).ToList();
+        var done = stageTasks.Count(x => x.Status == TMS.Models.TaskStatus.Done);
+        var stageProgress = stageTasks.Count == 0 ? 0 : (int)Math.Round(done * 100d / stageTasks.Count);
+        <section class="pipeline-stage">
+            <header>
+                <div class="pipeline-stage-number">@stage.SortOrder</div>
+                <div class="pipeline-grow"><h2>@stage.Name</h2><p>@(stage.Description ?? "Bu aşama için açıklama eklenmemiş.")</p></div>
+                @if (Model.Pipeline.CanManage)
+                {
+                    <div class="pipeline-order-actions" aria-label="@stage.Name sıralama işlemleri">
+                        <form method="post" asp-page-handler="MoveStage" asp-route-id="@Model.Pipeline.Project.Id" asp-route-stageId="@stage.Id" asp-route-direction="-1"><button type="submit" title="Yukarı taşı" aria-label="@stage.Name aşamasını yukarı taşı" disabled="@(stage.Id == Model.Pipeline.Stages.First().Id)"><i class="bi bi-arrow-up"></i></button></form>
+                        <form method="post" asp-page-handler="MoveStage" asp-route-id="@Model.Pipeline.Project.Id" asp-route-stageId="@stage.Id" asp-route-direction="1"><button type="submit" title="Aşağı taşı" aria-label="@stage.Name aşamasını aşağı taşı" disabled="@(stage.Id == Model.Pipeline.Stages.Last().Id)"><i class="bi bi-arrow-down"></i></button></form>
+                    </div>
+                }
+                <div class="pipeline-stage-progress"><strong>%@stageProgress</strong><span>@done / @stageTasks.Count görev</span></div>
+            </header>
+
+            @if (Model.Pipeline.CanManage)
+            {
+                <details class="pipeline-structure-edit">
+                    <summary><i class="bi bi-pencil"></i> Aşamayı düzenle</summary>
+                    <form method="post" asp-page-handler="UpdateStage" asp-route-id="@Model.Pipeline.Project.Id" asp-route-stageId="@stage.Id" class="pipeline-inline-form">
+                        <div><label>Aşama adı</label><input name="stageName" value="@stage.Name" maxlength="120" required /></div>
+                        <div class="pipeline-grow"><label>Açıklama</label><input name="stageDescription" value="@stage.Description" maxlength="500" /></div>
+                        <button type="submit">Kaydet</button>
+                    </form>
+                    <form method="post" asp-page-handler="DeleteStage" asp-route-id="@Model.Pipeline.Project.Id" asp-route-stageId="@stage.Id" class="pipeline-delete-form" data-confirm="Bu aşama silinsin mi? Görevleri aşama bekleyen alana taşınacak.">
+                        <button type="submit"><i class="bi bi-trash"></i> Aşamayı sil</button>
+                    </form>
+                </details>
+            }
+
+            @if (stage.Checkpoints.Count > 0)
+            {
+                <div class="pipeline-checkpoints">
+                    @foreach (var checkpoint in stage.Checkpoints.OrderBy(x => x.SortOrder))
+                    {
+                        var completed = PipelineService.IsCheckpointComplete(checkpoint);
+                        var checkpointTasks = checkpoint.Tasks.Count(x => !x.IsDeleted);
+                        var blockingDependencies = checkpoint.BlockingProjectRelations.Where(x => x.TargetProject.Status != TMS.Models.ProjectStatus.Completed).ToList();
+                        <div class="pipeline-checkpoint-wrap @(blockingDependencies.Count > 0 ? "is-blocked" : "")">
+                            <div class="pipeline-checkpoint @(completed ? "is-complete" : "")">
+                                <i class="bi @(completed ? "bi-check-circle-fill" : "bi-circle")"></i>
+                                <div class="pipeline-grow"><strong>@checkpoint.Name</strong><span>@checkpointTasks zorunlu görev · @(checkpoint.RequiresApproval ? "Onay gerekli" : "Otomatik")</span>@if (!string.IsNullOrWhiteSpace(checkpoint.Description)) { <span>@checkpoint.Description</span> }@if (blockingDependencies.Count > 0) { <span class="pipeline-checkpoint-blocked"><i class="bi bi-hourglass-split"></i> @string.Join(", ", blockingDependencies.Select(x => x.TargetProject.Name)) tamamlanmayı bekliyor</span> }</div>
+                                @if (Model.Pipeline.CanManage)
+                                {
+                                    <div class="pipeline-order-actions">
+                                        <form method="post" asp-page-handler="MoveCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-checkpointId="@checkpoint.Id" asp-route-direction="-1"><button type="submit" title="Yukarı taşı" aria-label="@checkpoint.Name checkpoint'ini yukarı taşı" disabled="@(checkpoint.Id == stage.Checkpoints.OrderBy(x => x.SortOrder).First().Id)"><i class="bi bi-arrow-up"></i></button></form>
+                                        <form method="post" asp-page-handler="MoveCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-checkpointId="@checkpoint.Id" asp-route-direction="1"><button type="submit" title="Aşağı taşı" aria-label="@checkpoint.Name checkpoint'ini aşağı taşı" disabled="@(checkpoint.Id == stage.Checkpoints.OrderBy(x => x.SortOrder).Last().Id)"><i class="bi bi-arrow-down"></i></button></form>
+                                    </div>
+                                }
+                                @if (Model.Pipeline.CanManage && checkpoint.RequiresApproval && !checkpoint.ApprovedAt.HasValue
+                                    && checkpointTasks > 0 && checkpoint.Tasks.All(x => x.IsDeleted || x.Status == TMS.Models.TaskStatus.Done)
+                                    && blockingDependencies.Count == 0)
+                                {
+                                    <form method="post" asp-page-handler="ApproveCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-checkpointId="@checkpoint.Id">
+                                        <button type="submit" class="pipeline-small-button">Onayla</button>
+                                    </form>
+                                }
+                            </div>
+                            @if (Model.Pipeline.CanManage)
+                            {
+                                <details class="pipeline-checkpoint-edit">
+                                    <summary><i class="bi bi-pencil"></i> Düzenle</summary>
+                                    <form method="post" asp-page-handler="UpdateCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-checkpointId="@checkpoint.Id" class="pipeline-inline-form">
+                                        <div><label>Checkpoint adı</label><input name="checkpointName" value="@checkpoint.Name" maxlength="120" required /></div>
+                                        <div class="pipeline-grow"><label>Açıklama</label><input name="checkpointDescription" value="@checkpoint.Description" maxlength="500" /></div>
+                                        <label class="pipeline-checkbox"><input name="requiresApproval" type="checkbox" value="true" checked="@checkpoint.RequiresApproval" /> Yönetici onayı</label>
+                                        <button type="submit">Kaydet</button>
+                                    </form>
+                                    <form method="post" asp-page-handler="DeleteCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-checkpointId="@checkpoint.Id" class="pipeline-delete-form" data-confirm="Bu checkpoint silinsin mi? Görevleri mevcut aşamada kalacak.">
+                                        <button type="submit"><i class="bi bi-trash"></i> Checkpoint'i sil</button>
+                                    </form>
+                                </details>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            <div class="pipeline-task-list">
+                @foreach (var task in stageTasks)
+                {
+                    <partial name="_PipelineTask" model="@(new TMS.Pages.Pipeline.PipelineTaskRow(task, Model.Pipeline, stage.Id))" />
+                }
+                @if (stageTasks.Count == 0)
+                {
+                    <p class="pipeline-no-task">Bu aşamaya henüz görev atanmadı.</p>
+                }
+            </div>
+
+            @if (Model.Pipeline.CanManage)
+            {
+                <details class="pipeline-checkpoint-create">
+                    <summary>Checkpoint ekle</summary>
+                    <form method="post" asp-page-handler="AddCheckpoint" asp-route-id="@Model.Pipeline.Project.Id" asp-route-stageId="@stage.Id" class="pipeline-inline-form">
+                        <div><label>Checkpoint adı</label><input asp-for="CheckpointName" /></div>
+                        <div class="pipeline-grow"><label>Açıklama</label><input asp-for="CheckpointDescription" /></div>
+                        <label class="pipeline-checkbox"><input asp-for="RequiresApproval" /> Yönetici onayı gerekli</label>
+                        <button type="submit">Ekle</button>
+                    </form>
+                </details>
+            }
+        </section>
+    }
+</div>
+
+<section class="pipeline-stage pipeline-unassigned">
+    <header><div class="pipeline-stage-number"><i class="bi bi-inbox"></i></div><div><h2>Aşama bekleyen görevler</h2><p>Yeni görevler otomatik olarak burada görünür.</p></div></header>
+    <div class="pipeline-task-list">
+        @foreach (var task in Model.Pipeline.UnassignedTasks)
+        {
+            <partial name="_PipelineTask" model="@(new TMS.Pages.Pipeline.PipelineTaskRow(task, Model.Pipeline, null))" />
+        }
+        @if (Model.Pipeline.UnassignedTasks.Count == 0)
+        {
+            <p class="pipeline-no-task">Bekleyen görev yok.</p>
+        }
+    </div>
+</section>
+}
+}
+
+
+
+
+@section Scripts {
+    @if (Model.ViewMode == "timeline" && Model.Pipeline.CanManage)
+    {
+        <script src="~/js/pipeline-timeline.js" asp-append-version="true" defer></script>
+    }
+    <script>
+        var pipelineFlow = document.querySelector('.pipeline-flow-workspace-header');
+        if (pipelineFlow) {
+            document.body.classList.add('pipeline-flow-open');
+            var pipelineFlowClose = document.querySelector('[data-pipeline-flow-close]');
+            if (pipelineFlowClose) pipelineFlowClose.focus();
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && pipelineFlowClose) pipelineFlowClose.click();
+            });
+        }
+
+        document.querySelectorAll('.pipeline-task-form').forEach(function (form) {
+            var stage = form.querySelector('select[name="stageId"]');
+            var checkpoint = form.querySelector('select[name="checkpointId"]');
+            if (!stage || !checkpoint) return;
+            function syncCheckpoints() {
+                Array.from(checkpoint.options).forEach(function (option) {
+                    if (!option.value) return;
+                    var matches = option.dataset.stageId === stage.value;
+                    option.hidden = !matches;
+                    option.disabled = !matches;
+                });
+                if (checkpoint.selectedOptions.length && checkpoint.selectedOptions[0].disabled) checkpoint.value = '';
+            }
+            stage.addEventListener('change', syncCheckpoints);
+            syncCheckpoints();
+        });
+        document.querySelectorAll('form[data-confirm]').forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                if (!window.confirm(form.dataset.confirm)) event.preventDefault();
+            });
+        });
+    </script>
+}

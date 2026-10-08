@@ -1,0 +1,879 @@
+@page
+@model TMS.Pages.Admin.RecycleBinModel
+
+@{
+    ViewData["Title"] = "Geri Dönüşüm Kutusu";
+    var activeTab = Model.Tab ?? "projects";
+    var totalDeleted =
+        Model.DeletedProjects.Count +
+        Model.DeletedTasks.Count +
+        Model.DeletedComments.Count +
+        Model.DeletedDepartments.Count +
+        Model.DeletedCategories.Count;
+}
+
+
+<section class="admin-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><span>Yönetim</span><i class="bi bi-chevron-right"></i><strong>Geri Dönüşüm Kutusu</strong></nav>
+
+        <h1 class="admin-page-title">
+            Geri Dönüşüm Kutusu
+        </h1>
+
+        <p class="admin-page-description">
+            Sistemden silinen proje, görev, yorum ve master data kayıtlarını inceleyip geri yükleyin.
+        </p>
+
+    </div>
+
+
+    <div class="admin-header-summary">
+
+        <span>Toplam Silinen</span>
+
+        <strong>
+            @totalDeleted
+        </strong>
+
+    </div>
+
+</section>
+
+
+<nav class="recycle-tabs"
+     aria-label="Geri dönüşüm kutusu kategorileri">
+
+    <a asp-page="RecycleBin"
+       asp-route-tab="projects"
+       class="recycle-tab @(activeTab == "projects" ? "active" : "")">
+
+        <span class="recycle-tab-icon">
+            <i class="bi bi-folder"></i>
+        </span>
+
+        <span class="recycle-tab-label">
+            Projeler
+        </span>
+
+        <span class="recycle-tab-count">
+            @Model.DeletedProjects.Count
+        </span>
+
+    </a>
+
+
+    <a asp-page="RecycleBin"
+       asp-route-tab="tasks"
+       class="recycle-tab @(activeTab == "tasks" ? "active" : "")">
+
+        <span class="recycle-tab-icon">
+            <i class="bi bi-list-check"></i>
+        </span>
+
+        <span class="recycle-tab-label">
+            Görevler
+        </span>
+
+        <span class="recycle-tab-count">
+            @Model.DeletedTasks.Count
+        </span>
+
+    </a>
+
+
+    <a asp-page="RecycleBin"
+       asp-route-tab="comments"
+       class="recycle-tab @(activeTab == "comments" ? "active" : "")">
+
+        <span class="recycle-tab-icon">
+            <i class="bi bi-chat-left-text"></i>
+        </span>
+
+        <span class="recycle-tab-label">
+            Yorumlar
+        </span>
+
+        <span class="recycle-tab-count">
+            @Model.DeletedComments.Count
+        </span>
+
+    </a>
+
+
+    <a asp-page="RecycleBin"
+       asp-route-tab="departments"
+       class="recycle-tab @(activeTab == "departments" ? "active" : "")">
+
+        <span class="recycle-tab-icon">
+            <i class="bi bi-building"></i>
+        </span>
+
+        <span class="recycle-tab-label">
+            Departmanlar
+        </span>
+
+        <span class="recycle-tab-count">
+            @Model.DeletedDepartments.Count
+        </span>
+
+    </a>
+
+
+    <a asp-page="RecycleBin"
+       asp-route-tab="categories"
+       class="recycle-tab @(activeTab == "categories" ? "active" : "")">
+
+        <span class="recycle-tab-icon">
+            <i class="bi bi-tags"></i>
+        </span>
+
+        <span class="recycle-tab-label">
+            Kategoriler
+        </span>
+
+        <span class="recycle-tab-count">
+            @Model.DeletedCategories.Count
+        </span>
+
+    </a>
+
+</nav>
+
+
+@if (activeTab == "projects")
+{
+    <section class="admin-section-card recycle-section">
+
+        <header class="admin-section-header">
+
+            <div>
+
+                <span class="admin-section-icon">
+                    <i class="bi bi-folder2-open"></i>
+                </span>
+
+                <div>
+                    <h2>Silinmiş Projeler</h2>
+                    <p>Silinen proje kayıtları ve kurtarma işlemleri</p>
+                </div>
+
+            </div>
+
+
+            @if (Model.DeletedProjects.Any())
+            {
+                <span class="admin-section-count">
+                    @Model.DeletedProjects.Count kayıt
+                </span>
+            }
+
+        </header>
+
+
+        @if (!Model.DeletedProjects.Any())
+        {
+            <div class="admin-empty-state">
+
+                <span class="admin-empty-icon">
+                    <i class="bi bi-folder-check"></i>
+                </span>
+
+                <h3>Silinmiş proje yok</h3>
+
+                <p>
+                    Geri yüklenmeyi bekleyen bir proje kaydı bulunmuyor.
+                </p>
+
+            </div>
+        }
+        else
+        {
+            <div class="admin-table-wrapper">
+
+                <table class="admin-table recycle-table">
+
+                    <thead>
+                        <tr>
+                            <th>Proje</th>
+                            <th>Silinme Tarihi</th>
+                            <th>Silen Kullanıcı</th>
+                            <th class="recycle-action-heading">İşlem</th>
+                        </tr>
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (var project in Model.DeletedProjects)
+                        {
+                            <tr>
+
+                                <td>
+
+                                    <div class="admin-entity">
+
+                                        <span class="admin-entity-icon">
+                                            <i class="bi bi-folder"></i>
+                                        </span>
+
+                                        <div>
+                                            <strong>@project.Name</strong>
+                                        </div>
+
+                                    </div>
+
+                                </td>
+
+
+                                <td>
+                                    <span class="recycle-date">
+                                        <i class="bi bi-clock-history"></i>
+                                        @(project.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                                    </span>
+                                </td>
+
+
+                                <td>
+
+                                    @if (!string.IsNullOrWhiteSpace(project.DeletedByUserId))
+                                    {
+                                        <span class="recycle-user-id">
+                                            <i class="bi bi-person"></i>
+                                            @Model.DeletedByName(project.DeletedByUserId)
+                                        </span>
+                                    }
+                                    else
+                                    {
+                                        <span class="admin-empty-value">
+                                            Bilinmiyor
+                                        </span>
+                                    }
+
+                                </td>
+
+
+                                <td class="recycle-action-cell">
+
+                                    <form method="post"
+                                          asp-page-handler="RestoreProject"
+                                          asp-route-id="@project.Id">
+
+                                        <button type="submit"
+                                                class="recycle-restore-button">
+
+                                            <i class="bi bi-arrow-counterclockwise"></i>
+                                            Geri Yükle
+
+                                        </button>
+
+                                    </form>
+
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </section>
+}
+
+
+else if (activeTab == "tasks")
+{
+<section class="admin-section-card recycle-section">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-list-check"></i>
+            </span>
+
+            <div>
+                <h2>Silinmiş Görevler</h2>
+                <p>Silinen görev kayıtları ve bağlı oldukları projeler</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.DeletedTasks.Any())
+        {
+            <span class="admin-section-count">
+                @Model.DeletedTasks.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.DeletedTasks.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-check2-square"></i>
+            </span>
+
+            <h3>Silinmiş görev yok</h3>
+
+            <p>
+                Geri yüklenmeyi bekleyen bir görev kaydı bulunmuyor.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table recycle-table">
+
+                <thead>
+                    <tr>
+                        <th>Görev</th>
+                        <th>Proje</th>
+                        <th>Silinme Tarihi</th>
+                        <th>Silen Kullanıcı</th>
+                        <th class="recycle-action-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var task in Model.DeletedTasks)
+                    {
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-entity">
+
+                                    <span class="admin-entity-icon">
+                                        <i class="bi bi-check2-square"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>@task.Title</strong>
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(task.Project?.Name))
+                                {
+                                    <span class="recycle-related-entity">
+                                        <i class="bi bi-folder"></i>
+                                        @task.Project.Name
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Proje bilgisi yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td>
+                                <span class="recycle-date">
+                                    <i class="bi bi-clock-history"></i>
+                                    @(task.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                                </span>
+                            </td>
+
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(task.DeletedByUserId))
+                                {
+                                    <span class="recycle-user-id">
+                                        <i class="bi bi-person"></i>
+                                        @Model.DeletedByName(task.DeletedByUserId)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Bilinmiyor
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td class="recycle-action-cell">
+
+                                <form method="post"
+                                      asp-page-handler="RestoreTask"
+                                      asp-route-id="@task.Id">
+
+                                    <button type="submit"
+                                            class="recycle-restore-button">
+
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Geri Yükle
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+}
+
+
+else if (activeTab == "comments")
+{
+<section class="admin-section-card recycle-section">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-chat-left-text"></i>
+            </span>
+
+            <div>
+                <h2>Silinmiş Yorumlar</h2>
+                <p>Proje ve görevlerden silinen yorumlar</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.DeletedComments.Any())
+        {
+            <span class="admin-section-count">
+                @Model.DeletedComments.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.DeletedComments.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-chat-square-check"></i>
+            </span>
+
+            <h3>Silinmiş yorum yok</h3>
+
+            <p>
+                Geri yüklenmeyi bekleyen bir yorum bulunmuyor.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table recycle-table recycle-comments-table">
+
+                <thead>
+                    <tr>
+                        <th>Yorum</th>
+                        <th>Bağlı Kayıt</th>
+                        <th>Silinme Tarihi</th>
+                        <th>Silen Kullanıcı</th>
+                        <th class="recycle-action-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var comment in Model.DeletedComments)
+                    {
+                        var commentPreview =
+                        string.IsNullOrWhiteSpace(comment.Content)
+                        ? "İçerik yok"
+                        : comment.Content.Length > 70
+                        ? comment.Content.Substring(0, 70) + "..."
+                        : comment.Content;
+
+
+                        <tr>
+
+                            <td>
+
+                                <div class="recycle-comment">
+
+                                    <span class="recycle-comment-icon">
+                                        <i class="bi bi-chat-left-text"></i>
+                                    </span>
+
+                                    <span>
+                                        @commentPreview
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                @if (comment.ProjectId.HasValue)
+                                {
+                                    <span class="recycle-related-entity">
+                                        <i class="bi bi-folder"></i>
+                                        Proje:
+                                        @(comment.Project?.Name ?? "Bilinmiyor")
+                                    </span>
+                                }
+                                else if (comment.TaskItemId.HasValue)
+                                {
+                                    <span class="recycle-related-entity">
+                                        <i class="bi bi-check2-square"></i>
+                                        Görev:
+                                        @(comment.TaskItem?.Title ?? "Bilinmiyor")
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Bağlı kayıt yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td>
+                                <span class="recycle-date">
+                                    <i class="bi bi-clock-history"></i>
+                                    @(comment.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                                </span>
+                            </td>
+
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(comment.DeletedByUserId))
+                                {
+                                    <span class="recycle-user-id">
+                                        <i class="bi bi-person"></i>
+                                        @Model.DeletedByName(comment.DeletedByUserId)
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Bilinmiyor
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td class="recycle-action-cell">
+
+                                <form method="post"
+                                      asp-page-handler="RestoreComment"
+                                      asp-route-id="@comment.Id">
+
+                                    <button type="submit"
+                                            class="recycle-restore-button">
+
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Geri Yükle
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+}
+
+else if (activeTab == "departments")
+{
+<section class="admin-section-card recycle-section">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-building"></i>
+            </span>
+
+            <div>
+                <h2>Silinmiş Departmanlar</h2>
+                <p>Master data içerisinden kaldırılan departman kayıtları</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.DeletedDepartments.Any())
+        {
+            <span class="admin-section-count">
+                @Model.DeletedDepartments.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.DeletedDepartments.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-building-check"></i>
+            </span>
+
+            <h3>Silinmiş departman yok</h3>
+
+            <p>
+                Geri yüklenmeyi bekleyen bir departman bulunmuyor.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table recycle-table">
+
+                <thead>
+                    <tr>
+                        <th>Departman</th>
+                        <th>Silinme Tarihi</th>
+                        <th class="recycle-action-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var dept in Model.DeletedDepartments)
+                    {
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-entity">
+
+                                    <span class="admin-entity-icon">
+                                        <i class="bi bi-building"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>@dept.Name</strong>
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+                                <span class="recycle-date">
+                                    <i class="bi bi-clock-history"></i>
+                                    @(dept.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                                </span>
+                            </td>
+
+
+                            <td class="recycle-action-cell">
+
+                                <form method="post"
+                                      asp-page-handler="RestoreDepartment"
+                                      asp-route-id="@dept.Id">
+
+                                    <button type="submit"
+                                            class="recycle-restore-button">
+
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Geri Yükle
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+}
+
+
+else if (activeTab == "categories")
+{
+<section class="admin-section-card recycle-section">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-tags"></i>
+            </span>
+
+            <div>
+                <h2>Silinmiş Kategoriler</h2>
+                <p>Master data içerisinden kaldırılan kategori kayıtları</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.DeletedCategories.Any())
+        {
+            <span class="admin-section-count">
+                @Model.DeletedCategories.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.DeletedCategories.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-tag"></i>
+            </span>
+
+            <h3>Silinmiş kategori yok</h3>
+
+            <p>
+                Geri yüklenmeyi bekleyen bir kategori bulunmuyor.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table recycle-table">
+
+                <thead>
+                    <tr>
+                        <th>Kategori</th>
+                        <th>Silinme Tarihi</th>
+                        <th class="recycle-action-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var cat in Model.DeletedCategories)
+                    {
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-entity">
+
+                                    <span class="admin-entity-icon">
+                                        <i class="bi bi-tag"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>@cat.Name</strong>
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+                                <span class="recycle-date">
+                                    <i class="bi bi-clock-history"></i>
+                                    @(cat.DeletedAt?.ToString("dd.MM.yyyy HH:mm") ?? "—")
+                                </span>
+                            </td>
+
+
+                            <td class="recycle-action-cell">
+
+                                <form method="post"
+                                      asp-page-handler="RestoreCategory"
+                                      asp-route-id="@cat.Id">
+
+                                    <button type="submit"
+                                            class="recycle-restore-button">
+
+                                        <i class="bi bi-arrow-counterclockwise"></i>
+                                        Geri Yükle
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+}

@@ -1,0 +1,52 @@
+@page
+@model TMS.Pages.Reports.IndexModel
+@{
+    ViewData["Title"] = "Raporlar";
+}
+<div class="report-page">
+    <header class="ticket-page-header">
+        <div>
+            <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Raporlar</strong></nav>
+            <h1>Raporlar</h1>
+            <p>@Model.ScopeLabel</p>
+        </div>
+    </header>
+
+    <section class="report-kpis" aria-label="Genel göstergeler">
+        <article><span class="report-kpi-icon"><i class="bi bi-folder2-open"></i></span><small>Aktif proje</small><strong>@Model.ActiveProjectCount</strong><em>@Model.ProjectCount toplam</em></article>
+        <article><span class="report-kpi-icon is-blue"><i class="bi bi-list-check"></i></span><small>Tamamlanan görev</small><strong>@Model.CompletedTaskCount</strong><em>@Model.TaskCount toplam</em></article>
+        <article><span class="report-kpi-icon is-amber"><i class="bi bi-clock-history"></i></span><small>Geciken görev</small><strong>@Model.OverdueTaskCount</strong><em>Açık görevlerde</em></article>
+        <article><span class="report-kpi-icon is-red"><i class="bi bi-alarm"></i></span><small>SLA aşımı</small><strong>@Model.SlaBreachCount</strong><em>@Model.OpenTicketCount açık Ticket</em></article>
+    </section>
+
+    <div class="report-grid">
+        <section class="ticket-panel report-card">
+            <div class="ticket-panel-heading"><h2>Proje durumları</h2><span>@Model.ProjectCount proje</span></div>
+            <div class="report-bars">
+                @foreach (var item in Model.ProjectStatuses)
+                { <div><span><strong>@item.Label</strong><small>@item.Count</small></span><div class="report-track"><i style="width:@item.Percent%"></i></div></div> }
+            </div>
+        </section>
+        <section class="ticket-panel report-card">
+            <div class="ticket-panel-heading"><h2>Görev durumları</h2><span>@Model.TaskCount görev</span></div>
+            <div class="report-bars is-tasks">
+                @foreach (var item in Model.TaskStatuses)
+                { <div><span><strong>@item.Label</strong><small>@item.Count</small></span><div class="report-track"><i style="width:@item.Percent%"></i></div></div> }
+            </div>
+        </section>
+        <section class="ticket-panel report-card report-workload-card">
+            <div class="ticket-panel-heading"><h2>Aktif iş yükü</h2><span>İlk 10 kişi</span></div>
+            @if (Model.Workloads.Count == 0)
+            { <div class="ticket-empty ticket-empty-compact"><p>Atanmış açık görev bulunmuyor.</p></div> }
+            else
+            {
+                <div class="report-workloads">
+                    @foreach (var item in Model.Workloads)
+                    {
+                        <div><span class="report-avatar">@item.Name[..1].ToUpperInvariant()</span><strong>@item.Name</strong><span>@item.Active aktif @if (item.Overdue > 0) { <em>· @item.Overdue gecikmiş</em> }</span></div>
+                    }
+                </div>
+            }
+        </section>
+    </div>
+</div>

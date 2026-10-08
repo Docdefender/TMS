@@ -1,0 +1,293 @@
+﻿@page
+@model TMS.Pages.Admin.DepartmentsModel
+@inject IConfiguration Configuration
+
+@{
+    ViewData["Title"] = "Departmanları Yönet";
+}
+
+@if (TempData["Error"] is string errorMessage)
+{
+    <div class="admin-feedback admin-feedback-danger" role="alert">@errorMessage</div>
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="admin-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><span>Yönetim</span><i class="bi bi-chevron-right"></i><strong>Departmanlar</strong></nav>
+
+        <h1 class="admin-page-title">
+            Departmanlar
+        </h1>
+
+        <p class="admin-page-description">
+            Proje ve kullanıcı organizasyonunda kullanılan departman bilgilerini yönetin.
+        </p>
+
+    </div>
+
+
+    <div class="admin-header-actions">
+        <a asp-page="Organization" class="project-action-button project-action-secondary">
+            <i class="bi bi-diagram-3"></i>
+            Yetki ve Sorumluluklar
+        </a>
+        <div class="admin-header-summary">
+            <span>Toplam</span>
+            <strong>@Model.Departments.Count</strong>
+        </div>
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     CREATE
+     ====================================================== -->
+
+<section class="admin-section-card">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-building-add"></i>
+            </span>
+
+            <div>
+                <h2>Yeni Departman</h2>
+                <p>Organizasyon yapısına yeni bir departman ekleyin.</p>
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <div class="admin-section-body">
+
+        <form method="post"
+              class="admin-create-form">
+
+            <div class="admin-create-fields">
+
+                <div class="form-field">
+
+                    <label asp-for="NewDepartment.Name">
+                        Departman Adı
+                        <span class="form-required">*</span>
+                    </label>
+
+                    <input asp-for="NewDepartment.Name"
+                           class="form-control"
+                           placeholder="Örn. Bilgi Teknolojileri"
+                           autocomplete="off" />
+
+                    <span asp-validation-for="NewDepartment.Name"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <div class="form-field">
+
+                    <label asp-for="NewDepartment.Description">
+                        Açıklama
+                    </label>
+
+                    <input asp-for="NewDepartment.Description"
+                           class="form-control"
+                           placeholder="Departman hakkında kısa açıklama"
+                           autocomplete="off" />
+
+                    <span asp-validation-for="NewDepartment.Description"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <button type="submit"
+                    class="project-action-button project-action-primary admin-create-button">
+
+                <i class="bi bi-plus-lg"></i>
+                Departman Ekle
+
+            </button>
+
+        </form>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     LIST
+     ====================================================== -->
+
+<section class="admin-section-card">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-building"></i>
+            </span>
+
+            <div>
+                <h2>Departman Listesi</h2>
+                <p>Sistemde tanımlı departmanlar</p>
+            </div>
+
+        </div>
+
+
+        @if (Model.Departments.Any())
+        {
+            <span class="admin-section-count">
+                @Model.Departments.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.Departments.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-building"></i>
+            </span>
+
+            <h3>Henüz departman yok</h3>
+
+            <p>
+                Yukarıdaki formu kullanarak ilk departmanı oluşturabilirsiniz.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table">
+
+                <thead>
+                    <tr>
+                        <th>Departman</th>
+                        <th>Açıklama</th>
+                        <th class="admin-table-actions-heading">İşlem</th>
+                    </tr>
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var dept in Model.Departments)
+                    {
+                        <tr>
+
+                            <td>
+
+                                <div class="admin-entity">
+
+                                    <span class="admin-entity-icon">
+                                        <i class="bi bi-building"></i>
+                                    </span>
+
+                                    <div>
+                                        <strong>@dept.Name</strong>
+                                        @if (dept.IsTicketSupport)
+                                        {
+                                            <span class="admin-protected-badge">Ticket destek ekibi</span>
+                                            <span class="admin-description">Otomatik atama: @(dept.AutoAssignTickets ? "Açık" : "Kapalı")</span>
+                                            @if (Configuration.GetValue<bool>($"{TMS.Services.TicketMailOptions.SectionName}:Enabled"))
+                                            {
+                                                <span class="admin-description">@Configuration["Ticketing:InboundGroupAddress"]</span>
+                                            }
+                                        }
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(dept.Description))
+                                {
+                                    <span class="admin-description">
+                                        @dept.Description
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Açıklama yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <td class="admin-table-actions">
+
+                                @if (dept.IsTicketSupport)
+                                {
+                                    <form method="post" asp-page-handler="TicketAutoAssignment" asp-route-id="@dept.Id">
+                                        <input type="hidden" name="enabled" value="@(dept.AutoAssignTickets ? "false" : "true")" />
+                                        <button type="submit" class="project-action-button project-action-secondary">Otomatik atamayı @(dept.AutoAssignTickets ? "kapat" : "aç")</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post"
+                                          asp-page-handler="Delete"
+                                          asp-route-id="@dept.Id">
+
+                                    <button type="submit"
+                                            class="admin-delete-button"
+                                            title="Departmanı sil"
+                                            aria-label="@dept.Name departmanını sil"
+                                            onclick="return confirm('Bu departmanı silmek istediğinizden emin misiniz?');">
+
+                                        <i class="bi bi-trash"></i>
+
+                                    </button>
+
+                                    </form>
+                                }
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

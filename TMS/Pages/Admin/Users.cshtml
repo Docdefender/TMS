@@ -1,0 +1,735 @@
+﻿@page
+@model TMS.Pages.Admin.UsersModel
+
+@{
+    ViewData["Title"] = "Kullanıcı Yönetimi";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="admin-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><span>Yönetim</span><i class="bi bi-chevron-right"></i><strong>Kullanıcılar</strong></nav>
+
+        <h1 class="admin-page-title">
+            Kullanıcılar
+        </h1>
+
+        <p class="admin-page-description">
+            Sisteme erişebilen kullanıcıları, rollerini ve departman bilgilerini yönetin.
+        </p>
+
+    </div>
+
+
+    <div class="admin-header-summary">
+
+        <span>Toplam Kullanıcı</span>
+
+        <strong>
+            @Model.Users.Count
+        </strong>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     FEEDBACK
+     ====================================================== -->
+@if (TempData["Success"] is string successMessage)
+{
+    <div class="admin-feedback admin-feedback-success">
+
+        <span>
+            <i class="bi bi-check-circle"></i>
+        </span>
+
+        <p>
+            @successMessage
+        </p>
+
+    </div>
+}
+
+
+@if (TempData["Error"] is string errorMessage)
+{
+    <div class="admin-feedback admin-feedback-danger">
+
+        <span>
+            <i class="bi bi-exclamation-triangle"></i>
+        </span>
+
+        <p>
+            @errorMessage
+        </p>
+
+    </div>
+}
+
+
+<!-- ======================================================
+     TOOLBAR
+     ====================================================== -->
+
+<section class="admin-users-toolbar">
+
+    <form method="get"
+          class="admin-users-search">
+
+        <div class="form-input-icon admin-users-search-input">
+
+            <i class="bi bi-search"></i>
+
+            <input type="text"
+                   name="Search"
+                   value="@Model.Search"
+                   class="form-control"
+                   placeholder="Ad veya e-posta ile ara..."
+                   autocomplete="off" />
+
+        </div>
+
+
+        <button type="submit"
+                class="project-action-button project-action-secondary">
+
+            <i class="bi bi-search"></i>
+            Ara
+
+        </button>
+
+
+        @if (!string.IsNullOrWhiteSpace(Model.Search))
+        {
+            <a asp-page="Users"
+               class="project-action-button project-action-secondary">
+
+                <i class="bi bi-x-lg"></i>
+                Temizle
+
+            </a>
+        }
+
+    </form>
+
+
+    <button type="button"
+            class="project-action-button project-action-primary"
+            onclick="openCreateUserModal()">
+
+        <i class="bi bi-person-plus"></i>
+        Yeni Kullanıcı
+
+    </button>
+
+</section>
+
+
+<!-- ======================================================
+     USER LIST
+     ====================================================== -->
+
+<section class="admin-section-card">
+
+    <header class="admin-section-header">
+
+        <div>
+
+            <span class="admin-section-icon">
+                <i class="bi bi-people"></i>
+            </span>
+
+            <div>
+                <h2>Kullanıcı Listesi</h2>
+
+                <p>
+                    Sistemde kayıtlı kullanıcılar ve erişim rolleri
+                </p>
+            </div>
+
+        </div>
+
+
+        @if (Model.Users.Any())
+        {
+            <span class="admin-section-count">
+                @Model.Users.Count kayıt
+            </span>
+        }
+
+    </header>
+
+
+    @if (!Model.Users.Any())
+    {
+        <div class="admin-empty-state">
+
+            <span class="admin-empty-icon">
+                <i class="bi bi-people"></i>
+            </span>
+
+            <h3>
+                Kullanıcı bulunamadı
+            </h3>
+
+            <p>
+                Arama kriterinizi değiştirebilir veya yeni bir kullanıcı oluşturabilirsiniz.
+            </p>
+
+        </div>
+    }
+    else
+    {
+        <div class="admin-table-wrapper">
+
+            <table class="admin-table admin-users-table">
+
+                <thead>
+
+                    <tr>
+                        <th>Kullanıcı</th>
+                        <th>Departman</th>
+                        <th>Rol</th>
+                        <th>Rol Yönetimi</th>
+                        <th class="admin-table-actions-heading">
+                            İşlem
+                        </th>
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    @foreach (var user in Model.Users)
+                    {
+                        var currentRole =
+                        user.Roles.FirstOrDefault() ?? "";
+
+                        var initial =
+                        string.IsNullOrWhiteSpace(user.FullName)
+                        ? "?"
+                        : user.FullName.Substring(0, 1).ToUpper();
+
+
+                        <tr>
+
+                            <!-- User -->
+
+                            <td>
+
+                                <div class="admin-user">
+
+                                    <span class="admin-user-avatar">
+                                        @initial
+                                    </span>
+
+
+                                    <div class="admin-user-info">
+
+                                        <strong>
+                                            @(user.FullName ?? "İsimsiz Kullanıcı")
+                                        </strong>
+
+                                        @if (!user.IsActive)
+                                        { <span class="admin-protected-badge">Pasif hesap</span> }
+
+                                        <span>
+                                            @user.Email
+                                        </span>
+
+                                    </div>
+
+                                </div>
+
+                            </td>
+
+
+                            <!-- Department -->
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(user.DepartmentName))
+                                {
+                                    <span class="admin-department">
+                                        <i class="bi bi-building"></i>
+                                        @user.DepartmentName
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="admin-empty-value">
+                                        Departman yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <!-- Role -->
+
+                            <td>
+
+                                @if (user.Roles.Any())
+                                {
+                                    foreach (var role in user.Roles)
+                                    {
+                                        <span class="admin-role-badge admin-role-@role.ToLowerInvariant()">
+                                            @role
+                                        </span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span class="admin-role-badge admin-role-none">
+                                        Rol yok
+                                    </span>
+                                }
+
+                            </td>
+
+
+                            <!-- Role Management -->
+
+                            <td>
+
+                                <form method="post"
+                                      asp-page-handler="ChangeRole"
+                                      class="admin-role-form">
+
+                                    <input type="hidden"
+                                           name="userId"
+                                           value="@user.Id" />
+
+
+                                    <div class="form-select-wrapper admin-role-select-wrapper">
+
+                                        <i class="bi bi-shield-check"></i>
+
+
+                                        <select name="role"
+                                                class="form-control form-select admin-role-select">
+
+                                            <option value=""
+                                                    selected="@(string.IsNullOrEmpty(currentRole) ? "selected" : null)">
+                                                Rol Seç
+                                            </option>
+
+                                            <option value="Admin"
+                                                    selected="@(currentRole == "Admin" ? "selected" : null)">
+                                                Admin
+                                            </option>
+
+                                            <option value="Manager"
+                                                    selected="@(currentRole == "Manager" ? "selected" : null)">
+                                                Manager
+                                            </option>
+
+                                            <option value="Member"
+                                                    selected="@(currentRole == "Member" ? "selected" : null)">
+                                                Member
+                                            </option>
+
+                                        </select>
+
+                                    </div>
+
+
+                                    <button type="submit"
+                                            class="admin-role-save-button"
+                                            title="Rolü kaydet"
+                                            aria-label="@user.FullName kullanıcısının rolünü kaydet">
+
+                                        <i class="bi bi-check-lg"></i>
+
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+
+                            <!-- Actions -->
+
+                            <td class="admin-table-actions">
+
+                                @if (!user.IsActive)
+                                {
+                                    <form method="post" asp-page-handler="ActivateUser">
+                                        <input type="hidden" name="userId" value="@user.Id" />
+                                        <button type="submit" class="project-action-button project-action-secondary" aria-label="@user.FullName hesabını etkinleştir">Etkinleştir</button>
+                                    </form>
+                                }
+                                else if (user.Email != "admin@tms.com")
+                                {
+                                    <form method="post"
+                                          asp-page-handler="DeactivateUser"
+                                          onsubmit="return confirm('Bu hesabı pasifleştirmek istiyor musunuz?');">
+
+                                        <input type="hidden"
+                                               name="userId"
+                                               value="@user.Id" />
+
+
+                                        <button type="submit"
+                                                class="admin-delete-button"
+                                                title="Hesabı pasifleştir"
+                                                aria-label="@user.FullName hesabını pasifleştir">
+
+                                            <i class="bi bi-person-x"></i>
+
+                                        </button>
+
+                                    </form>
+                                }
+                                else
+                                {
+                                    <span class="admin-protected-badge"
+                                          title="Varsayılan sistem yöneticisi">
+
+                                        <i class="bi bi-shield-lock"></i>
+                                        Korumalı
+
+                                    </span>
+                                }
+
+                            </td>
+
+                        </tr>
+                    }
+
+                </tbody>
+
+            </table>
+
+        </div>
+    }
+
+</section>
+
+
+<!-- ======================================================
+     CREATE USER MODAL
+     ====================================================== -->
+
+<div id="createUserModal"
+     class="admin-modal hidden"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="createUserModalTitle">
+
+    <div class="admin-modal-backdrop"
+         onclick="closeCreateUserModal()">
+    </div>
+
+
+    <div class="admin-modal-dialog">
+
+        <!-- Modal Header -->
+
+        <header class="admin-modal-header">
+
+            <div>
+
+                <span class="admin-modal-icon">
+                    <i class="bi bi-person-plus"></i>
+                </span>
+
+
+                <div>
+
+                    <h2 id="createUserModalTitle">
+                        Yeni Kullanıcı
+                    </h2>
+
+                    <p>
+                        Sisteme erişecek yeni kullanıcı bilgilerini girin.
+                    </p>
+
+                </div>
+
+            </div>
+
+
+            <button type="button"
+                    class="admin-modal-close"
+                    onclick="closeCreateUserModal()"
+                    aria-label="Pencereyi kapat">
+
+                <i class="bi bi-x-lg"></i>
+
+            </button>
+
+        </header>
+
+
+        <!-- Modal Body -->
+
+        <form method="post"
+              asp-page-handler="CreateUser">
+
+            <div class="admin-modal-body">
+
+                <div asp-validation-summary="ModelOnly"
+                     class="form-validation-summary">
+                </div>
+
+
+                <!-- Full Name -->
+
+                <div class="form-field">
+
+                    <label for="newUserFullName">
+                        Ad Soyad
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-person"></i>
+
+                        <input id="newUserFullName"
+                               name="NewUser.FullName"
+                               class="form-control"
+                               placeholder="Ad Soyad"
+                               required
+                               autocomplete="name" />
+
+                    </div>
+
+                </div>
+
+
+                <!-- Email -->
+
+                <div class="form-field">
+
+                    <label for="newUserEmail">
+                        E-posta
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-envelope"></i>
+
+                        <input id="newUserEmail"
+                               name="NewUser.Email"
+                               type="email"
+                               class="form-control"
+                               placeholder="eposta@ornek.com"
+                               required
+                               autocomplete="email" />
+
+                    </div>
+
+                </div>
+
+
+                <!-- Password -->
+
+                <div class="form-field">
+
+                    <label for="newUserPassword">
+                        Şifre
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-input-icon">
+
+                        <i class="bi bi-key"></i>
+
+                        <input id="newUserPassword"
+                               name="NewUser.Password"
+                               type="password"
+                               class="form-control"
+                               placeholder="En az 6 karakter"
+                               required
+                               autocomplete="new-password" />
+
+                    </div>
+
+                </div>
+
+
+                <!-- Role + Department -->
+
+                <div class="form-grid-two">
+
+                    <div class="form-field">
+
+                        <label for="newUserRole">
+                            Rol
+                        </label>
+
+
+                        <div class="form-select-wrapper">
+
+                            <i class="bi bi-shield-check"></i>
+
+
+                            <select id="newUserRole"
+                                    name="NewUser.Role"
+                                    class="form-control form-select">
+
+                                <option value="Member">
+                                    Member
+                                </option>
+
+                                <option value="Manager">
+                                    Manager
+                                </option>
+
+                                <option value="Admin">
+                                    Admin
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-field">
+
+                        <label for="newUserDepartment">
+                            Departman
+                        </label>
+
+
+                        <div class="form-select-wrapper">
+
+                            <i class="bi bi-building"></i>
+
+
+                            <select id="newUserDepartment"
+                                    name="NewUser.DepartmentId"
+                                    asp-items="Model.DepartmentList"
+                                    class="form-control form-select">
+
+                                <option value="">
+                                    Departman Seçin
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Modal Footer -->
+
+            <footer class="admin-modal-footer">
+
+                <button type="button"
+                        class="project-action-button project-action-secondary"
+                        onclick="closeCreateUserModal()">
+
+                    İptal
+
+                </button>
+
+
+                <button type="submit"
+                        class="project-action-button project-action-primary">
+
+                    <i class="bi bi-person-check"></i>
+                    Kullanıcı Oluştur
+
+                </button>
+
+            </footer>
+
+        </form>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+
+    <partial name="_ValidationScriptsPartial" />
+
+
+    <script>
+
+        function openCreateUserModal() {
+
+            const modal =
+                document.getElementById(
+                    'createUserModal'
+                );
+
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.remove('hidden');
+
+            document.body.classList.add(
+                'admin-modal-open'
+            );
+
+            setTimeout(() => {
+
+                document
+                    .getElementById('newUserFullName')
+                    ?.focus();
+
+            }, 50);
+
+        }
+
+
+        function closeCreateUserModal() {
+
+            const modal =
+                document.getElementById(
+                    'createUserModal'
+                );
+
+            if (!modal) {
+                return;
+            }
+
+            modal.classList.add('hidden');
+
+            document.body.classList.remove(
+                'admin-modal-open'
+            );
+
+        }
+
+
+        document.addEventListener(
+            'keydown',
+            function (event) {
+
+                if (event.key === 'Escape') {
+                    closeCreateUserModal();
+                }
+
+            }
+        );
+
+    </script>
+
+}

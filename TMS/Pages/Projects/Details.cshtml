@@ -1,0 +1,1030 @@
+@page "{id:int}"
+@model TMS.Pages.Projects.DetailsModel
+
+@{
+    ViewData["Title"] = Model.Project.Name;
+    var doneTaskCount = Model.Project.Tasks.Count(x => x.Status == TMS.Models.TaskStatus.Done);
+    var todoTaskCount = Model.Project.Tasks.Count(x => x.Status == TMS.Models.TaskStatus.ToDo);
+    var activeTaskCount = Model.Project.Tasks.Count(x => x.Status == TMS.Models.TaskStatus.InProgress);
+    var reviewTaskCount = Model.Project.Tasks.Count(x => x.Status == TMS.Models.TaskStatus.InReview);
+    var taskProgress = Model.Project.Tasks.Count == 0
+        ? 0
+        : (int)Math.Round(doneTaskCount * 100d / Model.Project.Tasks.Count);
+}
+
+
+<!-- ======================================================
+     PROJECT HEADER
+     ====================================================== -->
+
+<section class="project-detail-header">
+
+    <div class="project-detail-heading">
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><strong>PRJ-@Model.Project.Id.ToString("D4")</strong></nav>
+
+        <div class="project-title-row">
+            <h1>@Model.Project.Name</h1>
+
+            <span class="project-status-badge @GetStatusBadgeClass(Model.Project.Status)">
+                @GetProjectStatusText(Model.Project.Status)
+            </span>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(Model.Project.Description))
+        {
+            <p class="project-detail-description">@Model.Project.Description</p>
+        }
+
+        <div class="project-identity-summary">
+            <div class="project-identity-people">
+                <span class="command-avatar-stack">
+                    @if (Model.Project.Manager is not null)
+                    {
+                        <span class="command-avatar" title="@Model.Project.Manager.FullName">
+                            @if (!string.IsNullOrWhiteSpace(Model.Project.Manager.ProfileImagePath)) { <img src="@Model.Project.Manager.ProfileImagePath" alt="" /> }
+                            else { @GetInitials(Model.Project.Manager.FullName) }
+                        </span>
+                    }
+                    @foreach (var person in Model.Project.Members.Where(m => m.User is not null && m.UserId != Model.Project.ManagerUserId).Take(3))
+                    {
+                        <span class="command-avatar" title="@person.User!.FullName">
+                            @if (!string.IsNullOrWhiteSpace(person.User.ProfileImagePath)) { <img src="@person.User.ProfileImagePath" alt="" /> }
+                            else { @GetInitials(person.User.FullName) }
+                        </span>
+                    }
+                    @if (Model.Project.Members.Count > 3) { <span class="command-avatar command-avatar-more">+@(Model.Project.Members.Count - 3)</span> }
+                </span>
+                <span><small>Proje ekibi</small><strong>@(Model.Project.Manager?.FullName ?? "Sorumlu atanmamış")</strong></span>
+            </div>
+            <div class="project-identity-progress" style="--project-progress:@taskProgress"><strong>%@taskProgress</strong><span>Tamamlandı</span></div>
+            <div class="project-identity-count"><small>Açık görev</small><strong>@(Model.Project.Tasks.Count - doneTaskCount)</strong></div>
+            <div class="project-identity-count"><small>Toplam görev</small><strong>@Model.Project.Tasks.Count</strong></div>
+        </div>
+
+    </div>
+
+
+    <div class="project-detail-actions project-detail-actions-with-status">
+        <a asp-page="/Pipeline/Details" asp-route-id="@Model.Project.Id" class="project-action-button project-action-secondary"><i class="bi bi-diagram-3"></i> Pipeline'ı Görüntüle</a>
+@if (Model.CanChangeStatus)
+{
+    <form method="post" asp-page-handler="Status" asp-route-id="@Model.Project.Id" class="project-status-form">
+        <label for="project-status-change">Proje durumu</label>
+        <select id="project-status-change" name="status" class="form-control">
+            @foreach (var status in Enum.GetValues<TMS.Models.ProjectStatus>())
+            { <option value="@status" selected="@(status == Model.Project.Status)">@GetProjectStatusText(status)</option> }
+        </select>
+        <button type="submit" class="project-action-button project-action-primary">Durumu güncelle</button>
+    </form>
+}
+
+
+        @if (Model.CanEdit)
+        {
+            <a asp-page="Edit"
+               asp-route-id="@Model.Project.Id"
+               class="project-action-button project-action-secondary">
+
+                <i class="bi bi-pencil"></i>
+                Düzenle
+
+            </a>
+        }
+
+        @if (Model.CanDelete)
+        {
+            <form method="post"
+                  asp-page-handler="DeleteProject">
+
+                <button type="submit"
+                        class="project-action-button project-action-danger"
+                        onclick="return confirm('Bu projeyi silmek istediğinizden emin misiniz?');">
+
+                    <i class="bi bi-trash"></i>
+                    Sil
+
+                </button>
+
+            </form>
+        }
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     PROJECT META
+     ====================================================== -->
+
+<section class="project-meta-strip">
+
+    <div class="project-meta-item">
+        <span class="project-meta-icon">
+            <i class="bi bi-calendar-event"></i>
+        </span>
+
+        <div>
+            <span class="project-meta-label">Başlangıç</span>
+            <strong>@Model.Project.StartDate.ToString("dd.MM.yyyy")</strong>
+        </div>
+    </div>
+
+
+    <div class="project-meta-item">
+        <span class="project-meta-icon">
+            <i class="bi bi-calendar-check"></i>
+        </span>
+
+        <div>
+            <span class="project-meta-label">Bitiş</span>
+            <strong>@(Model.Project.EndDate?.ToString("dd.MM.yyyy") ?? "Belirtilmedi")</strong>
+        </div>
+    </div>
+
+
+    <div class="project-meta-item">
+        <span class="project-meta-icon">
+            <i class="bi bi-building"></i>
+        </span>
+
+        <div>
+            <span class="project-meta-label">Departman</span>
+            <strong>@(Model.Project.Department?.Name ?? "Belirtilmedi")</strong>
+        </div>
+    </div>
+
+
+    <div class="project-meta-item">
+        <span class="project-meta-icon">
+            <i class="bi bi-tag"></i>
+        </span>
+
+        <div>
+            <span class="project-meta-label">Kategori</span>
+            <strong>@(Model.Project.Category?.Name ?? "Belirtilmedi")</strong>
+        </div>
+    </div>
+
+
+    <div class="project-meta-item">
+        <span class="project-meta-icon">
+            <i class="bi bi-list-check"></i>
+        </span>
+
+        <div>
+            <span class="project-meta-label">Görev</span>
+            <strong>@Model.Project.Tasks.Count</strong>
+        </div>
+    </div>
+
+</section>
+
+
+<nav class="detail-tabs" data-detail-tabs data-detail-tabs-key="project-details" aria-label="Proje detay bölümleri">
+    <button type="button" class="detail-tab is-active" data-detail-tab="overview"><i class="bi bi-grid"></i> Genel Bakış</button>
+    <button type="button" class="detail-tab" data-detail-tab="board"><i class="bi bi-kanban"></i> Board <span>@Model.Project.Tasks.Count</span></button>
+    <button type="button" class="detail-tab" data-detail-tab="tasks"><i class="bi bi-list-task"></i> Görevler <span>@Model.Project.Tasks.Count</span></button>
+    <a asp-page="/Pipeline/Details" asp-route-id="@Model.Project.Id" asp-route-viewMode="timeline" class="detail-tab detail-tab-link"><i class="bi bi-bar-chart-steps"></i> Zaman Çizelgesi</a>
+    <button type="button" class="detail-tab" data-detail-tab="activity"><i class="bi bi-chat-square-text"></i> Dosyalar ve Yorumlar <span>@(Model.Attachments.Count + Model.Comments.Count)</span></button>
+</nav>
+
+
+<!-- ======================================================
+     PROJECT OVERVIEW
+     ====================================================== -->
+
+<section class="project-overview-grid" data-detail-panel="overview">
+
+    <!-- PROJECT INFORMATION -->
+
+    <article class="project-section-card">
+
+        <header class="project-section-header">
+
+            <div>
+                <span class="project-section-icon">
+                    <i class="bi bi-info-lg"></i>
+                </span>
+
+                <div>
+                    <h2>Proje İlerlemesi</h2>
+                    <p>Görevlerin mevcut durumuna göre genel görünüm</p>
+                </div>
+            </div>
+
+        </header>
+
+
+        <div class="project-progress-overview">
+            <div class="project-progress-main">
+                <div class="project-progress-value"><strong>@taskProgress%</strong><span>Tamamlanma</span></div>
+                <div class="project-progress-copy">
+                    <h3>@doneTaskCount / @Model.Project.Tasks.Count görev tamamlandı</h3>
+                    <p>Oluşturan: @(Model.Project.CreatedByUser?.FullName ?? "—")</p>
+                    <div class="project-progress-track" aria-label="Proje ilerlemesi yüzde @taskProgress"><span style="width:@taskProgress%"></span></div>
+                </div>
+            </div>
+            <div class="project-progress-stats">
+                <div><span class="is-todo"></span><small>Yapılacak</small><strong>@todoTaskCount</strong></div>
+                <div><span class="is-progress"></span><small>Devam eden</small><strong>@activeTaskCount</strong></div>
+                <div><span class="is-review"></span><small>İncelemede</small><strong>@reviewTaskCount</strong></div>
+                <div><span class="is-done"></span><small>Tamamlanan</small><strong>@doneTaskCount</strong></div>
+            </div>
+        </div>
+
+    </article>
+
+
+    <!-- PEOPLE -->
+
+    <aside class="project-people-column">
+
+        <!-- MANAGER -->
+
+        <article class="project-section-card">
+
+            <header class="project-section-header project-section-header-compact">
+
+                <div>
+                    <span class="project-section-icon">
+                        <i class="bi bi-person-badge"></i>
+                    </span>
+
+                    <div>
+                        <h2>Proje Sorumlusu</h2>
+                    </div>
+                </div>
+
+            </header>
+
+
+            <div class="project-person-body">
+
+                @if (Model.Project.Manager is not null)
+                {
+                    <div class="project-person-card">
+
+                        <span class="project-person-avatar project-person-avatar-primary">
+                            @if (!string.IsNullOrWhiteSpace(Model.Project.Manager.ProfileImagePath)) { <img src="@Model.Project.Manager.ProfileImagePath" alt="" /> }
+                            else { @GetInitials(Model.Project.Manager.FullName) }
+                        </span>
+
+                        <div>
+                            <strong>@Model.Project.Manager.FullName</strong>
+                            <span>@Model.Project.Manager.Email</span>
+                        </div>
+
+                    </div>
+                }
+                else
+                {
+                    <div class="project-inline-empty">
+                        <i class="bi bi-person-dash"></i>
+                        Sorumlu atanmamış
+                    </div>
+                }
+
+            </div>
+
+        </article>
+
+
+        <!-- MEMBERS -->
+
+        <article class="project-section-card project-members-card">
+
+            <header class="project-section-header project-section-header-compact">
+
+                <div>
+                    <span class="project-section-icon">
+                        <i class="bi bi-people"></i>
+                    </span>
+
+                    <div>
+                        <h2>Ekip Üyeleri</h2>
+                    </div>
+                </div>
+
+                <span class="project-count-badge">@Model.Project.Members.Count</span>
+
+            </header>
+
+
+            <div class="project-members-list">
+
+                @if (!Model.Project.Members.Any())
+                {
+                    <div class="project-inline-empty">
+                        <i class="bi bi-people"></i>
+                        Henüz ekip üyesi yok
+                    </div>
+                }
+                else
+                {
+                    @foreach (var member in Model.Project.Members)
+                    {
+                        <div class="project-member">
+
+                            <span class="project-person-avatar">
+                                @if (!string.IsNullOrWhiteSpace(member.User?.ProfileImagePath)) { <img src="@member.User.ProfileImagePath" alt="" /> }
+                                else { @GetInitials(member.User?.FullName ?? "—") }
+                            </span>
+
+                            <div>
+                                <strong>@(member.User?.FullName ?? "—")</strong>
+                                <span>@(member.User?.Email ?? "")</span>
+                            </div>
+
+                        </div>
+                    }
+                }
+
+            </div>
+
+        </article>
+
+    </aside>
+
+</section>
+
+@if (Model.PipelineSummary is not null)
+{
+    var checkpoints = Model.PipelineSummary.Stages.SelectMany(stage => stage.Checkpoints.Select(checkpoint => new { Stage = stage, Checkpoint = checkpoint })).Take(4).ToList();
+    <section class="project-insight-grid" data-detail-panel="overview">
+        <article class="project-insight-card">
+            <header><div><span class="project-section-icon"><i class="bi bi-flag"></i></span><span><h2>Checkpoint durumu</h2><p>Pipeline içindeki sıradaki kontrol noktaları</p></span></div><a asp-page="/Pipeline/Details" asp-route-id="@Model.Project.Id" asp-route-viewMode="flow">Pipeline'a git</a></header>
+            <div class="project-checkpoint-list">
+                @if (checkpoints.Count == 0)
+                {
+                    <div class="project-insight-empty">Henüz checkpoint oluşturulmamış.</div>
+                }
+                else
+                {
+                    @foreach (var item in checkpoints)
+                    {
+                        var complete = TMS.Services.PipelineService.IsCheckpointComplete(item.Checkpoint);
+                        <div class="project-checkpoint-row @(complete ? "is-complete" : "")"><i class="bi @(complete ? "bi-check-circle-fill" : "bi-circle")"></i><span><strong>@item.Checkpoint.Name</strong><small>@item.Stage.Name · @item.Checkpoint.Tasks.Count görev</small></span><em>@(complete ? "Tamamlandı" : item.Checkpoint.RequiresApproval ? "Onay bekliyor" : "Devam ediyor")</em></div>
+                    }
+                }
+            </div>
+        </article>
+
+        <article class="project-insight-card">
+            <header><div><span class="project-section-icon"><i class="bi bi-diagram-2"></i></span><span><h2>İlişkili projeler</h2><p>Bağlantılar ve proje bağımlılıkları</p></span></div><a asp-page="/Pipeline/Details" asp-route-id="@Model.Project.Id" asp-route-viewMode="flow">Haritada gör</a></header>
+            <div class="project-relation-summary-list">
+                @if (Model.PipelineSummary.Relations.Count == 0)
+                {
+                    <div class="project-insight-empty">Bu projeye bağlı başka proje yok.</div>
+                }
+                else
+                {
+                    @foreach (var relation in Model.PipelineSummary.Relations.Take(4))
+                    {
+                        var other = relation.SourceProjectId == Model.Project.Id ? relation.TargetProject : relation.SourceProject;
+                        <a asp-page="/Projects/Details" asp-route-id="@other.Id"
+                           data-record-preview-trigger
+                           data-preview-type="İlişkili proje"
+                           data-preview-key="PRJ-@other.Id.ToString("D4")"
+                           data-preview-title="@other.Name"
+                           data-preview-status="@GetProjectStatusText(other.Status)"
+                           data-preview-subtitle="@(relation.Type == TMS.Models.ProjectRelationType.Dependency ? "Proje bağımlılığı" : "İlişkili proje")"
+                           data-preview-description="@other.Description"
+                           data-preview-meta-1-label="İlişki"
+                           data-preview-meta-1-value="@(relation.Type == TMS.Models.ProjectRelationType.Dependency ? "Bağımlılık" : "Bağlantı")"
+                           data-preview-meta-2-label="Başlangıç"
+                           data-preview-meta-2-value="@other.StartDate.ToString("dd MMM yyyy")"
+                           data-preview-meta-3-label="Bitiş"
+                           data-preview-meta-3-value="@(other.EndDate?.ToString("dd MMM yyyy") ?? "Belirtilmedi")"
+                           data-preview-detail-url="@Url.Page("/Projects/Details", new { id = other.Id })"
+                           data-preview-secondary-label="Pipeline"
+                           data-preview-secondary-url="@Url.Page("/Pipeline/Details", new { id = other.Id })"><span class="command-project-symbol"><i class="bi bi-folder"></i></span><span><strong>@other.Name</strong><small>@(relation.Type == TMS.Models.ProjectRelationType.Dependency ? "Bağımlılık" : "İlişkili proje") · @GetProjectStatusText(other.Status)</small></span><i class="bi bi-chevron-right"></i></a>
+                    }
+                }
+            </div>
+        </article>
+
+        <article class="project-insight-card project-insight-activity">
+            <header><div><span class="project-section-icon"><i class="bi bi-activity"></i></span><span><h2>Son aktiviteler</h2><p>Pipeline ve görev hareketleri</p></span></div><a asp-page="/Pipeline/Details" asp-route-id="@Model.Project.Id" asp-route-viewMode="history">Geçmiş</a></header>
+            <div class="project-activity-summary-list">
+                @if (Model.RecentPipelineHistory.Count == 0)
+                {
+                    <div class="project-insight-empty">Henüz aktivite bulunmuyor.</div>
+                }
+                else
+                {
+                    @foreach (var entry in Model.RecentPipelineHistory)
+                    {
+                        <div><span class="project-activity-icon"><i class="bi @entry.Icon"></i></span><span><strong>@entry.Title</strong><small>@(entry.Log.User?.FullName ?? "Sistem") · @entry.Log.Timestamp.ToString("dd MMM HH:mm")</small></span></div>
+                    }
+                }
+            </div>
+        </article>
+    </section>
+}
+
+
+<!-- ======================================================
+     TASK BOARD
+     ====================================================== -->
+
+<section class="project-board-panel" data-detail-panel="board" hidden>
+    <header class="project-board-heading">
+        <div>
+            <h2>Proje Board'u</h2>
+            <p>Görevleri durumlarına göre takip edin ve yetkiniz olan kartları sürükleyerek güncelleyin.</p>
+        </div>
+        @if (Model.CanCreateTask)
+        {
+            <button type="button" class="project-action-button project-action-primary" data-open-detail-tab="tasks">
+                <i class="bi bi-plus-lg"></i>
+                Görev Ekle
+            </button>
+        }
+    </header>
+    @await Html.PartialAsync("_TaskBoard", Model.Board)
+</section>
+
+
+
+<!-- ======================================================
+     TASKS
+     ====================================================== -->
+
+<section class="project-section-card project-content-section" data-detail-panel="tasks" hidden>
+
+    <header class="project-section-header">
+
+        <div>
+            <span class="project-section-icon">
+                <i class="bi bi-list-task"></i>
+            </span>
+
+            <div>
+                <h2>Görevler</h2>
+                <p>Bu projeye bağlı görevlerin yönetimi</p>
+            </div>
+        </div>
+
+        <span class="project-count-badge">@Model.Project.Tasks.Count</span>
+
+    </header>
+
+
+    <div class="project-section-body">
+
+        @if (Model.CanCreateTask) {<form method="post" class="project-task-create">
+
+            <div class="project-field project-field-title">
+                <label asp-for="NewTask.Title">Görev Başlığı</label>
+
+                <input asp-for="NewTask.Title"
+                       placeholder="Yeni görev başlığı..." />
+            </div>
+
+
+            <div class="project-field">
+                <label asp-for="NewTask.Status">Durum</label>
+
+                <select asp-for="NewTask.Status">
+                    <option value="ToDo">Yapılacak</option>
+                    <option value="InProgress">Devam Ediyor</option>
+                    <option value="InReview">Gözden Geçiriliyor</option>
+                    <option value="Done">Tamamlandı</option>
+                </select>
+            </div>
+
+            <div class="project-field">
+                <label asp-for="NewTask.Priority">Öncelik</label>
+                <select asp-for="NewTask.Priority">
+                    <option value="Low">Düşük</option>
+                    <option value="Normal">Normal</option>
+                    <option value="High">Yüksek</option>
+                    <option value="Critical">Kritik</option>
+                </select>
+            </div>
+
+
+            <div class="project-field">
+                <label asp-for="NewTask.PlannedStartDate">Planlanan Başlangıç</label>
+
+                <input asp-for="NewTask.PlannedStartDate" type="date" />
+            </div>
+
+
+            <div class="project-field">
+                <label asp-for="NewTask.DueDate">Planlanan Bitiş</label>
+
+                <input asp-for="NewTask.DueDate" type="date" />
+            </div>
+
+
+            <div class="project-field">
+                <label asp-for="NewTask.AssignedToUserId">Atanan</label>
+
+                <select asp-for="NewTask.AssignedToUserId"
+                        asp-items="Model.UserList">
+
+                    <option value="">Atanmamış</option>
+
+                </select>
+            </div>
+
+
+            <div class="project-field">
+                <label asp-for="NewTask.CategoryId">Kategori</label>
+
+                <select asp-for="NewTask.CategoryId"
+                        asp-items="Model.CategoryList">
+
+                    <option value="">Kategori seçin</option>
+
+                </select>
+            </div>
+
+            <div class="project-field project-field-labels">
+                <label asp-for="NewTaskLabelText">Etiketler</label>
+                <input asp-for="NewTaskLabelText" maxlength="300" placeholder="backend, müşteri, acil" />
+                <span asp-validation-for="NewTaskLabelText" class="form-validation-message"></span>
+            </div>
+
+
+            <input type="hidden"
+                   asp-for="NewTask.ProjectId"
+                   value="@Model.Project.Id" />
+
+
+            <button type="submit"
+                    class="project-action-button project-action-primary project-task-submit">
+
+                <i class="bi bi-plus-lg"></i>
+                Görev Ekle
+
+            </button>
+
+        </form>}
+
+
+        @if (!Model.Project.Tasks.Any())
+        {
+            <div class="project-empty-state">
+
+                <span>
+                    <i class="bi bi-clipboard-check"></i>
+                </span>
+
+                <strong>Henüz görev bulunmuyor</strong>
+
+                <p>Yukarıdaki alandan bu projeye ilk görevi ekleyebilirsiniz.</p>
+
+            </div>
+        }
+        else
+        {
+            <div class="project-task-table-wrap">
+
+                <table class="project-task-table">
+
+                    <thead>
+                        <tr>
+                            <th>Görev</th>
+                            <th>Durum</th>
+                            <th>Kategori</th>
+                            <th>Atanan</th>
+                            <th>Oluşturulma</th>
+                            <th>Son Tarih</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+
+
+                    <tbody>
+
+                        @foreach (var task in Model.Project.Tasks)
+                        {
+                            <tr>
+
+                                <td>
+                                    <a asp-page="/Tasks/Details"
+                                       asp-route-id="@task.Id"
+                                       class="project-task-name">
+
+                                        @task.Title
+
+                                    </a>
+                                </td>
+
+
+                                <td>
+                                    <span class="project-status-badge @GetTaskBadgeClass(task.Status)">
+                                        @GetTaskStatusText(task.Status)
+                                    </span>
+                                </td>
+
+
+                                <td class="project-table-secondary">
+                                    @(task.Category?.Name ?? "—")
+                                </td>
+
+
+                                <td>
+                                    @if (task.AssignedToUser is not null)
+                                    {
+                                        <div class="project-task-person">
+
+                                            <span>
+                                                @task.AssignedToUser.FullName.Substring(0, 1).ToUpper()
+                                            </span>
+
+                                            @task.AssignedToUser.FullName
+
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <span class="project-table-secondary">Atanmamış</span>
+                                    }
+                                </td>
+
+
+                                <td class="project-table-secondary">
+                                    @task.CreatedDate.ToString("dd.MM.yyyy")
+                                </td>
+
+
+                                <td class="project-table-secondary">
+                                    @(task.DueDate?.ToString("dd.MM.yyyy") ?? "—")
+                                </td>
+
+
+                                <td>
+                                    <a asp-page="/Tasks/Details"
+                                       asp-route-id="@task.Id"
+                                       class="project-icon-button"
+                                       aria-label="@task.Title görev detayları">
+
+                                        <i class="bi bi-arrow-right"></i>
+
+                                    </a>
+                                </td>
+
+                            </tr>
+                        }
+
+                    </tbody>
+
+                </table>
+
+            </div>
+        }
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     SECONDARY CONTENT
+     ====================================================== -->
+
+<section class="project-secondary-grid" data-detail-panel="activity" hidden>
+
+    <!-- ATTACHMENTS -->
+
+    <article class="project-section-card project-secondary-card">
+
+        <header class="project-section-header">
+
+            <div>
+                <span class="project-section-icon">
+                    <i class="bi bi-paperclip"></i>
+                </span>
+
+                <div>
+                    <h2>Ekler</h2>
+                    <p>Projeye ait doküman ve dosyalar</p>
+                </div>
+            </div>
+
+            <span class="project-count-badge">@Model.Attachments.Count</span>
+
+        </header>
+
+
+        <div class="project-section-body">
+
+            <form method="post"
+                  asp-page-handler="UploadFile"
+                  enctype="multipart/form-data"
+                  class="project-upload-form project-upload-form-compact">
+
+                <div class="project-upload-input">
+
+                    <span class="project-upload-icon">
+                        <i class="bi bi-cloud-arrow-up"></i>
+                    </span>
+
+                    <div class="project-upload-control">
+                        <input type="file" asp-for="UploadedFile" />
+                        <small>Maksimum dosya boyutu: 10 MB</small>
+                    </div>
+
+                </div>
+
+
+                <button type="submit"
+                        class="project-action-button project-action-primary">
+
+                    <i class="bi bi-upload"></i>
+                    Yükle
+
+                </button>
+
+            </form>
+
+
+            @if (!Model.Attachments.Any())
+            {
+                <div class="project-empty-state project-empty-state-small">
+
+                    <span>
+                        <i class="bi bi-file-earmark"></i>
+                    </span>
+
+                    <strong>Henüz dosya eklenmemiş</strong>
+
+                    <p>Proje ile ilgili dosyaları yukarıdaki alandan yükleyebilirsiniz.</p>
+
+                </div>
+            }
+            else
+            {
+                <div class="project-attachment-list">
+
+                    @foreach (var file in Model.Attachments)
+                    {
+                        <div class="project-attachment-item">
+
+                            <span class="project-file-icon">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </span>
+
+
+                            <div class="project-file-content">
+
+                                <a href="@file.FilePath"
+                                   target="_blank">
+                                    @file.FileName
+                                </a>
+
+                                <span>
+                                    @(file.FileSize / 1024) KB
+                                    ·
+                                    @(file.UploadedByUser?.FullName ?? "—")
+                                    ·
+                                    @file.UploadedAt.ToString("dd.MM.yyyy HH:mm")
+                                </span>
+
+                            </div>
+
+
+                            <div class="project-file-actions">
+
+                                <a href="@file.FilePath"
+                                   target="_blank"
+                                   class="project-icon-button"
+                                   title="Dosyayı aç">
+
+                                    <i class="bi bi-box-arrow-up-right"></i>
+
+                                </a>
+
+
+                                @if (file.UploadedByUserId == Model.CurrentUserId || User.IsInRole("Admin"))
+                                {
+                                    <form method="post"
+                                          asp-page-handler="DeleteFile"
+                                          asp-route-attachmentId="@file.Id">
+
+                                        <button type="submit"
+                                                class="project-icon-button project-icon-button-danger"
+                                                title="Dosyayı sil"
+                                                onclick="return confirm('Bu dosyayı silmek istediğinizden emin misiniz?');">
+
+                                            <i class="bi bi-trash"></i>
+
+                                        </button>
+
+                                    </form>
+                                }
+
+                            </div>
+
+                        </div>
+                    }
+
+                </div>
+            }
+
+        </div>
+
+    </article>
+
+
+    <!-- COMMENTS -->
+    @if (Model.CanSeeComments)
+    {
+        <article class="project-section-card project-secondary-card">
+
+            <header class="project-section-header">
+
+                <div>
+                    <span class="project-section-icon">
+                        <i class="bi bi-chat-left-text"></i>
+                    </span>
+
+                    <div>
+                        <h2>Yorumlar</h2>
+                        <p>Projeye ait ekip içi görüşmeler</p>
+                    </div>
+                </div>
+
+                <span class="project-count-badge">@Model.Comments.Count</span>
+
+            </header>
+
+
+            <div class="project-section-body">
+
+                @if (Model.CanComment)
+                {
+                    <form method="post"
+                          asp-page-handler="AddComment"
+                          class="project-comment-form project-comment-form-compact">
+
+                        <textarea asp-for="NewComment"
+                                  rows="3"
+                                  placeholder="Projeye bir yorum ekleyin..."></textarea>
+
+                        <div class="project-comment-actions">
+
+                            <span>
+                                <i class="bi bi-info-circle"></i>
+                                Proje ekibi tarafından görüntülenebilir.
+                            </span>
+
+                            <button type="submit"
+                                    class="project-action-button project-action-primary">
+
+                                <i class="bi bi-send"></i>
+                                Gönder
+
+                            </button>
+
+                        </div>
+
+                    </form>
+                }
+
+
+                @if (!Model.Comments.Any())
+                {
+                    <div class="project-empty-state project-empty-state-small">
+
+                        <span>
+                            <i class="bi bi-chat"></i>
+                        </span>
+
+                        <strong>Henüz yorum yok</strong>
+
+                        <p>Bu proje için henüz bir görüşme başlatılmamış.</p>
+
+                    </div>
+                }
+                else
+                {
+                    <div class="project-comment-list">
+
+                        @foreach (var comment in Model.Comments)
+                        {
+                            <article class="project-comment">
+
+                                <span class="project-person-avatar">
+                                    @(comment.User?.FullName?.Substring(0, 1).ToUpper() ?? "—")
+                                </span>
+
+
+                                <div class="project-comment-content">
+
+                                    <header>
+
+                                        <div>
+                                            <strong>@(comment.User?.FullName ?? "—")</strong>
+
+                                            <span>
+                                                @comment.CreatedAt.ToString("dd.MM.yyyy HH:mm")
+
+                                                @if (comment.UpdatedAt.HasValue)
+                                                {
+                                                    <span> · düzenlenmiş</span>
+                                                }
+                                            </span>
+                                        </div>
+
+
+                                        @if (comment.UserId == Model.CurrentUserId || User.IsInRole("Admin"))
+                                        {
+                                            <form method="post"
+                                                  asp-page-handler="DeleteComment"
+                                                  asp-route-commentId="@comment.Id">
+
+                                                <button type="submit"
+                                                        class="project-icon-button project-icon-button-danger"
+                                                        title="Yorumu sil"
+                                                        onclick="return confirm('Bu yorumu silmek istediğinizden emin misiniz?');">
+
+                                                    <i class="bi bi-trash"></i>
+
+                                                </button>
+
+                                            </form>
+                                        }
+
+                                    </header>
+
+
+                                    <p>@comment.Content</p>
+
+                                </div>
+
+                            </article>
+                        }
+
+                    </div>
+                }
+
+            </div>
+
+        </article>
+    }
+
+</section>
+
+
+@functions {
+    string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Take(2).Select(x => char.ToUpperInvariant(x[0])));
+    }
+
+    string GetStatusBadgeClass(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "project-status-neutral",
+        TMS.Models.ProjectStatus.InProgress => "project-status-info",
+        TMS.Models.ProjectStatus.Completed => "project-status-success",
+        TMS.Models.ProjectStatus.OnHold => "project-status-warning",
+        TMS.Models.ProjectStatus.Cancelled => "project-status-danger",
+        _ => "project-status-neutral"
+    };
+
+
+    string GetProjectStatusText(TMS.Models.ProjectStatus status) => status switch
+    {
+        TMS.Models.ProjectStatus.NotStarted => "Başlamadı",
+        TMS.Models.ProjectStatus.InProgress => "Devam Ediyor",
+        TMS.Models.ProjectStatus.Completed => "Tamamlandı",
+        TMS.Models.ProjectStatus.OnHold => "Beklemede",
+        TMS.Models.ProjectStatus.Cancelled => "İptal Edildi",
+        _ => status.ToString()
+    };
+
+
+    string GetTaskBadgeClass(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "project-status-neutral",
+        TMS.Models.TaskStatus.InProgress => "project-status-info",
+        TMS.Models.TaskStatus.InReview => "project-status-warning",
+        TMS.Models.TaskStatus.Done => "project-status-success",
+        _ => "project-status-neutral"
+    };
+
+
+    string GetTaskStatusText(TMS.Models.TaskStatus status) => status switch
+    {
+        TMS.Models.TaskStatus.ToDo => "Yapılacak",
+        TMS.Models.TaskStatus.InProgress => "Devam Ediyor",
+        TMS.Models.TaskStatus.InReview => "Gözden Geçiriliyor",
+        TMS.Models.TaskStatus.Done => "Tamamlandı",
+        _ => status.ToString()
+    };
+
+}
+
+@Html.AntiForgeryToken()
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+    <script src="~/js/kanban.js" asp-append-version="true"></script>
+}

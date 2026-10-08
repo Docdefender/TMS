@@ -1,0 +1,403 @@
+@page
+@model TMS.Pages.Projects.CreateModel
+
+@{
+    ViewData["Title"] = "Proje Oluştur";
+}
+
+
+<!-- ======================================================
+     PAGE HEADER
+     ====================================================== -->
+
+<section class="form-page-header">
+
+    <div>
+
+        <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><a asp-page="/Projects/Index">Projeler</a><i class="bi bi-chevron-right"></i><strong>Yeni Proje</strong></nav>
+
+
+        <h1 class="form-page-title">
+            Proje Oluştur
+        </h1>
+
+
+        <p class="form-page-description">
+            Projenin temel bilgilerini, planlamasını ve ekip yapısını belirleyin.
+        </p>
+
+    </div>
+
+</section>
+
+
+<!-- ======================================================
+     FORM
+     ====================================================== -->
+
+<form method="post"
+      class="dizge-form workspace-form">
+
+    <div asp-validation-summary="ModelOnly"
+         class="form-validation-summary">
+    </div>
+
+
+    <div class="project-form-grid">
+
+
+        <!-- ==================================================
+             BASIC INFORMATION
+             ================================================== -->
+
+        <section class="project-section-card" data-step="1">
+
+            <header class="project-section-header">
+
+                <div>
+
+                    <span class="project-section-icon">
+                        <i class="bi bi-folder2-open"></i>
+                    </span>
+
+
+                    <div>
+                        <h2>Temel Bilgiler</h2>
+                        <p>Projenin adı, açıklaması ve sınıflandırması</p>
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <div class="form-section-body">
+
+
+                <!-- Project Name -->
+
+                <div class="form-field">
+
+                    <label asp-for="Project.Name">
+                        Proje Adı
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <input asp-for="Project.Name"
+                           class="form-control"
+                           placeholder="Proje adını girin" />
+
+
+                    <span asp-validation-for="Project.Name"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Description -->
+
+                <div class="form-field">
+
+                    <label asp-for="Project.Description">
+                        Açıklama
+                    </label>
+
+
+                    <textarea asp-for="Project.Description"
+                              class="form-control form-textarea"
+                              rows="4"
+                              placeholder="Projenin amacı, kapsamı ve önemli detayları...">
+                    </textarea>
+
+
+                    <span asp-validation-for="Project.Description"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Department + Category -->
+
+                <div class="form-grid-two">
+
+                    <div class="form-field">
+
+                        <label asp-for="Project.DepartmentId">
+                            Departman
+                        </label>
+
+
+                        <div class="form-select-wrapper">
+
+                            <i class="bi bi-building"></i>
+
+                            <select asp-for="Project.DepartmentId"
+                                    asp-items="Model.DepartmentList"
+                                    class="form-control form-select">
+
+                                <option value="">
+                                    — Departman Seçin —
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+
+                    <div class="form-field">
+
+                        <label asp-for="Project.CategoryId">
+                            Kategori
+                        </label>
+
+
+                        <div class="form-select-wrapper">
+
+                            <i class="bi bi-tag"></i>
+
+                            <select asp-for="Project.CategoryId"
+                                    asp-items="Model.CategoryList"
+                                    class="form-control form-select">
+
+                                <option value="">
+                                    — Kategori Seçin —
+                                </option>
+
+                            </select>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ==================================================
+             PLANNING & TEAM
+             ================================================== -->
+
+        <section class="project-section-card" data-step="2">
+
+            <header class="project-section-header">
+
+                <div>
+
+                    <span class="project-section-icon">
+                        <i class="bi bi-diagram-3"></i>
+                    </span>
+
+
+                    <div>
+                        <h2>Planlama ve Ekip</h2>
+                        <p>Zamanlama, durum ve proje sorumlulukları</p>
+                    </div>
+
+                </div>
+
+            </header>
+
+
+            <div class="form-section-body">
+
+
+                <!-- Dates -->
+
+                <div class="form-grid-two">
+
+                    <div class="form-field">
+
+                        <label asp-for="Project.StartDate">
+                            Başlangıç Tarihi
+                        </label>
+
+
+                        <div class="form-input-icon">
+
+                            <i class="bi bi-calendar-event"></i>
+
+                            <input asp-for="Project.StartDate"
+                                   type="date"
+                                   class="form-control" />
+
+                        </div>
+
+
+                        <span asp-validation-for="Project.StartDate"
+                              class="form-validation-message">
+                        </span>
+
+                    </div>
+
+
+                    <div class="form-field">
+
+                        <label asp-for="Project.EndDate">
+                            Bitiş Tarihi
+                        </label>
+
+
+                        <div class="form-input-icon">
+
+                            <i class="bi bi-calendar-check"></i>
+
+                            <input asp-for="Project.EndDate"
+                                   type="date"
+                                   class="form-control" />
+
+                        </div>
+
+
+                        <span asp-validation-for="Project.EndDate"
+                              class="form-validation-message">
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Status -->
+
+                <div class="form-field">
+
+                    <label asp-for="Project.Status">
+                        Proje Durumu
+                    </label>
+
+
+                    <div class="form-select-wrapper">
+
+                        <i class="bi bi-circle-half"></i>
+
+                        <select asp-for="Project.Status"
+                                class="form-control form-select">
+
+                            <option value="NotStarted">
+                                Başlamadı
+                            </option>
+
+                            <option value="InProgress">
+                                Devam Ediyor
+                            </option>
+
+                            <option value="Completed">
+                                Tamamlandı
+                            </option>
+
+                            <option value="OnHold">
+                                Beklemede
+                            </option>
+
+                            <option value="Cancelled">
+                                İptal Edildi
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <span asp-validation-for="Project.Status"
+                          class="form-validation-message">
+                    </span>
+
+                </div>
+
+
+                <!-- Manager -->
+
+                <div class="form-field">
+
+                    <label asp-for="Project.ManagerUserId">
+                        Proje Sorumlusu
+                        <span class="form-required">*</span>
+                    </label>
+
+
+                    <div class="form-select-wrapper">
+
+                        <i class="bi bi-person-badge"></i>
+
+                        <select asp-for="Project.ManagerUserId"
+                                asp-items="Model.UserList"
+                                class="form-control form-select">
+
+                            <option value="">
+                                — Sorumlu Seçin —
+                            </option>
+
+                        </select>
+
+                    </div>
+
+                </div>
+
+
+                <!-- Team Members -->
+
+                <div class="form-field">
+
+                    <div class="form-label-row">
+
+                        <label>
+                            Ekip Üyeleri
+                        </label>
+
+
+                        <span class="form-field-hint">
+                            Birden fazla kişi seçebilirsiniz
+                        </span>
+
+                    </div>
+
+
+                    <partial name="_TeamPicker" model="Model.TeamPicker" />
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+
+    <!-- ==================================================
+         ACTIONS
+         ================================================== -->
+
+    <div class="form-actions">
+
+        <a asp-page="Index"
+           class="project-action-button project-action-secondary">
+
+            İptal
+
+        </a>
+
+
+        <button type="submit"
+                class="project-action-button project-action-primary">
+
+            <i class="bi bi-check-lg"></i>
+            Projeyi Oluştur
+
+        </button>
+
+    </div>
+
+</form>
+
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

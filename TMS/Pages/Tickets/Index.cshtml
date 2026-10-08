@@ -1,0 +1,157 @@
+@page
+@model TMS.Pages.Tickets.IndexModel
+@using TMS.Services
+@{
+    ViewData["Title"] = "Ticket'lar";
+    var filters = new (string Value, string Label)[] {
+        ("mine", "Ticket'larım"), ("viewing", "Görüntüleyebildiklerim"),
+        ("all", "Tüm Ticket'lar"), ("pool", "Atanmamış havuz"),
+        ("assigned", "Bana atananlar"), ("following", "İzlediklerim"),
+        ("review", "İnceleme"), ("sla", "SLA aşımı"), ("resolved", "Çözüldü"), ("closed", "Kapatıldı")
+    };
+}
+<div class="ticket-page">
+    <header class="ticket-page-header">
+        <div>
+            <nav class="page-breadcrumb" aria-label="Sayfa yolu"><a asp-page="/Index">Ana Sayfa</a><i class="bi bi-chevron-right"></i><strong>Ticket'lar</strong></nav>
+            <h1>Ticket'lar</h1>
+            <p>Talepler ve Sistem Geliştirme çalışma havuzu</p>
+        </div>
+        @if (Model.CanWorkTickets) { <a asp-page="/Tickets/Create" class="project-action-button project-action-primary"><i class="bi bi-plus-lg" aria-hidden="true"></i> Elle Ticket oluştur</a> }
+    </header>
+    <section class="ticket-summary-strip" aria-label="Ticket özeti">
+        <a asp-page="/Tickets/Index" asp-route-filter="all" class="ticket-summary-item">
+            <span class="ticket-summary-icon ticket-status-open"><i class="bi bi-inbox"></i></span>
+            <span><small>Açık Ticket</small><strong>@Model.OpenCount</strong></span>
+        </a>
+        <a asp-page="/Tickets/Index" asp-route-filter="assigned" class="ticket-summary-item">
+            <span class="ticket-summary-icon ticket-status-progress"><i class="bi bi-person-check"></i></span>
+            <span><small>Bana atanan</small><strong>@Model.AssignedCount</strong></span>
+        </a>
+        <a asp-page="/Tickets/Index" asp-route-filter="review" class="ticket-summary-item">
+            <span class="ticket-summary-icon ticket-status-waiting"><i class="bi bi-chat-left-dots"></i></span>
+            <span><small>Yeni yanıt</small><strong>@Model.ReviewCount</strong></span>
+        </a>
+        @if (Model.CanWorkTickets)
+        {
+            <a asp-page="/Tickets/Index" asp-route-filter="pool" class="ticket-summary-item">
+                <span class="ticket-summary-icon ticket-status-closed"><i class="bi bi-tray"></i></span>
+                <span><small>Havuzda</small><strong>@Model.PoolCount</strong></span>
+            </a>
+            <a asp-page="/Tickets/Index" asp-route-filter="sla" class="ticket-summary-item">
+                <span class="ticket-summary-icon ticket-sla-alert"><i class="bi bi-alarm"></i></span>
+                <span><small>SLA aşımı</small><strong>@Model.SlaBreachCount</strong></span>
+            </a>
+        }
+    </section>
+    @if (Model.Filter == "pool" && Model.Items.Count > 0)
+    {
+        var nextTicket = Model.Items[0];
+        var waiting = DateTime.UtcNow - nextTicket.CreatedAt;
+        <section class="ticket-pool-spotlight">
+            <div class="ticket-pool-copy">
+                <span class="ticket-pool-kicker"><i class="bi bi-lightning-charge-fill"></i> Sıradaki Ticket</span>
+                <div class="ticket-pool-meta"><span>TCK-@nextTicket.CreatedAt.Year-@nextTicket.Id.ToString("D6")</span><span>@nextTicket.Requester.FullName</span></div>
+                <h2>@nextTicket.Subject</h2>
+                <p>@(waiting.TotalDays >= 1 ? $"{(int)waiting.TotalDays} gündür" : $"{Math.Max(1, (int)waiting.TotalHours)} saattir") havuzda bekliyor.</p>
+                <div class="ticket-pool-actions">
+                    <form method="post" asp-page-handler="Claim"><input type="hidden" name="id" value="@nextTicket.Id" /><button type="submit" class="project-action-button ticket-pool-claim"><i class="bi bi-person-check"></i> Üstlen ve başla</button></form>
+                    <a asp-page="/Tickets/Details" asp-route-id="@nextTicket.Id" class="project-action-button ticket-pool-review"><i class="bi bi-eye"></i> İncele</a>
+                </div>
+            </div>
+            <div class="ticket-pool-art" aria-hidden="true"><span></span><span></span></div>
+        </section>
+    }
+    <section class="ticket-panel ticket-workspace" aria-label="Ticket çalışma alanı">
+        <div class="ticket-filter-panel" aria-label="Ticket filtreleri ve arama">
+        @if (Model.CanWorkTickets)
+        {
+            <nav class="ticket-queue-tabs" aria-label="Sık kullanılan Ticket görünümleri">
+                <a asp-page="/Tickets/Index" asp-route-filter="all" class="@(Model.Filter == "all" ? "is-active" : "")"><i class="bi bi-inboxes"></i> Tümü</a>
+                <a asp-page="/Tickets/Index" asp-route-filter="pool" class="@(Model.Filter == "pool" ? "is-active" : "")"><i class="bi bi-tray"></i> Havuz</a>
+                <a asp-page="/Tickets/Index" asp-route-filter="assigned" class="@(Model.Filter == "assigned" ? "is-active" : "")"><i class="bi bi-person-check"></i> Bana atanan</a>
+                <a asp-page="/Tickets/Index" asp-route-filter="review" class="@(Model.Filter == "review" ? "is-active" : "")"><i class="bi bi-chat-left-dots"></i> İnceleme</a>
+            </nav>
+        }
+        <form method="get" class="ticket-search" role="search">
+            <label class="ticket-filter-select">
+                <i class="bi bi-funnel"></i>
+                <span class="sr-only">Ticket görünümü</span>
+                <select name="filter" aria-label="Ticket görünümü">
+                    @foreach (var filter in filters)
+                    {
+                        if (!Model.CanWorkTickets && filter.Value != "mine" && filter.Value != "viewing") { continue; }
+                        <option value="@filter.Value" selected="@(Model.Filter == filter.Value)">@filter.Label</option>
+                    }
+                </select>
+            </label>
+            <label for="ticketSearch" class="sr-only">Ticket ara</label>
+            <input id="ticketSearch" type="search" name="search" value="@Model.Search" maxlength="200" class="form-control" placeholder="Konu, talep sahibi veya e-posta" />
+            <button type="submit" class="project-action-button project-action-primary"><i class="bi bi-search" aria-hidden="true"></i> Uygula</button>
+            @if (Model.CanWorkTickets && Model.MailIntakeEnabled) { <a asp-page="/Tickets/Unmatched" class="project-action-button project-action-secondary"><i class="bi bi-person-exclamation"></i> Eşleşmeyenler</a> }
+        </form>
+        </div>
+        <div class="ticket-list-region" aria-label="Ticket listesi">
+        <div class="ticket-panel-heading"><h2>Ticket listesi</h2><span>@Model.TotalCount kayıt</span></div>
+        @if (Model.Items.Count == 0)
+        {
+            <div class="ticket-empty"><i class="bi bi-inbox" aria-hidden="true"></i><p>Bu filtrede Ticket bulunmuyor.</p></div>
+        }
+        else
+        {
+            <div class="ticket-table-scroll">
+                <table class="ticket-table">
+                    <thead><tr><th scope="col">Ticket</th><th scope="col">Durum</th><th scope="col">SLA</th><th scope="col">Sorumlu</th><th scope="col">Son işlem</th></tr></thead>
+                    <tbody>
+                    @foreach (var ticket in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="ticket-subject-cell">
+                                    <span class="ticket-key">TCK-@ticket.CreatedAt.Year-@ticket.Id.ToString("D6")</span>
+                                    <span class="ticket-subject-copy">
+                                        <a asp-page="/Tickets/Details" asp-route-id="@ticket.Id" class="ticket-row-link"
+                                           data-record-preview-trigger
+                                           data-preview-type="Ticket"
+                                           data-preview-key="TCK-@ticket.CreatedAt.Year-@ticket.Id.ToString("D6")"
+                                           data-preview-title="@ticket.Subject"
+                                           data-preview-status="@TMS.Pages.Tickets.DetailsModel.StatusText(ticket.Status)"
+                                           data-preview-subtitle="Talep sahibi · @ticket.Requester.FullName"
+                                           data-preview-description="@(ticket.HasNewReply ? "Yeni yanıt içeren Ticket. Ayrıntıları açarak konuşmayı inceleyebilirsiniz." : "Ticket konuşmasını ve işlem geçmişini ayrıntı sayfasından inceleyebilirsiniz.")"
+                                           data-preview-meta-1-label="Talep sahibi"
+                                           data-preview-meta-1-value="@ticket.Requester.FullName"
+                                           data-preview-meta-2-label="Sorumlu"
+                                           data-preview-meta-2-value="@(ticket.AssignedToUser?.FullName ?? "Havuzda")"
+                                           data-preview-meta-3-label="Oluşturma"
+                                           data-preview-meta-3-value="@ticket.CreatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")"
+                                           data-preview-meta-4-label="Son işlem"
+                                           data-preview-meta-4-value="@ticket.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy HH:mm")"
+                                           data-preview-detail-url="@Url.Page("/Tickets/Details", new { id = ticket.Id })">@ticket.Subject</a>
+                                        <small>@ticket.Requester.FullName</small>
+                                    </span>
+                                    @if (ticket.HasNewReply) { <span class="ticket-new-reply"><i class="bi bi-circle-fill"></i> Yeni yanıt</span> }
+                                </div>
+                            </td>
+                            <td><span class="ticket-pill @TMS.Pages.Tickets.DetailsModel.StatusClass(ticket.Status)">@TMS.Pages.Tickets.DetailsModel.StatusText(ticket.Status)</span></td>
+                            <td><span class="ticket-sla @(TicketSla.IsBreached(ticket, DateTime.UtcNow) ? "is-breached" : "")"><i class="bi bi-clock"></i> @TicketSla.RemainingText(ticket, DateTime.UtcNow)</span><small>@TMS.Pages.Tickets.DetailsModel.PriorityText(ticket.Priority)</small></td>
+                            <td><span class="ticket-assignee @(ticket.AssignedToUser is null ? "is-empty" : "")">@(ticket.AssignedToUser?.FullName ?? "Atanmamış")</span></td>
+                            <td><time datetime="@ticket.UpdatedAt.ToString("O")">@ticket.UpdatedAt.ToLocalTime().ToString("dd MMM yyyy")</time><small>@ticket.UpdatedAt.ToLocalTime().ToString("HH:mm")</small></td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        }
+        </div>
+    </section>
+    @if (Model.PageCount > 1)
+    {
+        <nav aria-label="Ticket sayfaları" class="ticket-pagination">
+            @if (Model.PageNumber > 1)
+            { <a asp-page="/Tickets/Index" asp-route-filter="@Model.Filter" asp-route-search="@Model.Search" asp-route-pageNumber="@(Model.PageNumber - 1)" class="project-action-button project-action-secondary">Önceki</a> }
+            <span>Sayfa @Model.PageNumber / @Model.PageCount · @Model.TotalCount kayıt</span>
+            @if (Model.PageNumber < Model.PageCount)
+            { <a asp-page="/Tickets/Index" asp-route-filter="@Model.Filter" asp-route-search="@Model.Search" asp-route-pageNumber="@(Model.PageNumber + 1)" class="project-action-button project-action-secondary">Sonraki</a> }
+        </nav>
+    }
+</div>
